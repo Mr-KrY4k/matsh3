@@ -33,6 +33,20 @@ class GemComponent extends PositionComponent {
   Svg? _loadedSpecialSvg;
   bool _isLoading = false;
 
+  // Кэш для часто используемых объектов рендеринга
+  Paint? _shadowPaint;
+  Paint? _darkenPaint;
+  Paint? _gradientPaint;
+  Rect? _cachedRect;
+  RRect? _cachedRRect;
+  RRect? _cachedShadowRRect;
+
+  // Кэш для размеров изображений
+  static const double _imageScale = 0.7;
+  double? _cachedImageSize;
+  double? _cachedImageOffset;
+  Rect? _cachedImageRect;
+
   GemComponent({
     required this.gemType,
     required this.boardPosition,
@@ -153,80 +167,91 @@ class GemComponent extends PositionComponent {
 
     final center = size / 2;
     final gemPadding = gemSize * 0.03;
-    final rect = Rect.fromCenter(
+
+    // Кэшируем rect и rrect если еще не созданы
+    _cachedRect ??= Rect.fromCenter(
       center: Offset(center.x, center.y),
       width: gemSize - gemPadding * 2,
       height: gemSize - gemPadding * 2,
     );
+    final rect = _cachedRect!;
 
-    final rrect = RRect.fromRectAndRadius(
+    _cachedRRect ??= RRect.fromRectAndRadius(
       rect,
       Radius.circular(gemSize * 0.15),
     );
+    final rrect = _cachedRRect!;
 
-    // Рисуем тень
+    // Рисуем тень (кэшируем Paint)
     final shadowRect = rect.translate(2, 2);
-    final shadowPaint = Paint()
+    _shadowPaint ??= Paint()
       ..color = Colors.black.withOpacity(0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(shadowRect, Radius.circular(gemSize * 0.15)),
-      shadowPaint,
+
+    _cachedShadowRRect ??= RRect.fromRectAndRadius(
+      shadowRect,
+      Radius.circular(gemSize * 0.15),
     );
+    canvas.drawRRect(_cachedShadowRRect!, _shadowPaint!);
 
     // Сначала ВСЕГДА рисуем цветной квадрат (как фон)
-    final gemColor = theme.getGemColor(gemType);
-    final gradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [gemColor, gemColor.withOpacity(0.7)],
-    );
+    // Кэшируем градиент и Paint
+    if (_gradientPaint == null) {
+      final gemColor = theme.getGemColor(gemType);
+      final gradient = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [gemColor, gemColor.withOpacity(0.7)],
+      );
+      _gradientPaint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..style = PaintingStyle.fill;
+    }
 
-    final paint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRRect(rrect, paint);
+    canvas.drawRRect(rrect, _gradientPaint!);
 
     // Потом рисуем изображение ПОВЕРХ (если есть)
     // НО: для специальных камней рисуем только специальную иконку
     if (specialType == SpecialGemType.none) {
       // Обычный камень - рисуем его изображение (если есть)
       if (_loadedSvg != null) {
-        // Рисуем SVG
-        final imageScale = 0.7;
-        final imageSize = rect.width * imageScale;
-        final imageOffset = (rect.width - imageSize) / 2;
+        // Рисуем SVG (кэшируем размеры)
+        _cachedImageSize ??= rect.width * _imageScale;
+        _cachedImageOffset ??= (rect.width - _cachedImageSize!) / 2;
 
         canvas.save();
-        canvas.translate(rect.left + imageOffset, rect.top + imageOffset);
-        _loadedSvg!.render(canvas, Vector2(imageSize, imageSize));
+        canvas.translate(
+          rect.left + _cachedImageOffset!,
+          rect.top + _cachedImageOffset!,
+        );
+        _loadedSvg!.render(
+          canvas,
+          Vector2(_cachedImageSize!, _cachedImageSize!),
+        );
         canvas.restore();
       } else if (_loadedImage != null) {
-        // Рисуем PNG
-        final imageScale = 0.7;
-        final imageSize = rect.width * imageScale;
-        final imageRect = Rect.fromCenter(
+        // Рисуем PNG (кэшируем rect)
+        _cachedImageRect ??= Rect.fromCenter(
           center: rect.center,
-          width: imageSize,
-          height: imageSize,
+          width: rect.width * _imageScale,
+          height: rect.width * _imageScale,
         );
 
         paintImage(
           canvas: canvas,
-          rect: imageRect,
+          rect: _cachedImageRect!,
           image: _loadedImage!,
           fit: BoxFit.contain,
         );
       }
     }
 
-    // Затемнение при выделении
+    // Затемнение при выделении (кэшируем Paint)
     if (isSelected) {
-      final darkenPaint = Paint()
+      _darkenPaint ??= Paint()
         ..color = Colors.black.withOpacity(0.4)
         ..style = PaintingStyle.fill;
-      canvas.drawRRect(rrect, darkenPaint);
+      canvas.drawRRect(rrect, _darkenPaint!);
     }
 
     // Рисуем иконку специального камня (поверх всего)
@@ -398,5 +423,17 @@ class GemComponent extends PositionComponent {
         MoveEffect.by(Vector2(5, 0), EffectController(duration: 0.05)),
       ]),
     );
+  }
+
+  /// Очистить кэш рендеринга (вызывается при изменении состояния камня)
+  /// Это необходимо когда камень становится специальным или меняет тип
+  void invalidateRenderCache() {
+    _gradientPaint = null;
+    _cachedRect = null;
+    _cachedRRect = null;
+    _cachedShadowRRect = null;
+    _cachedImageSize = null;
+    _cachedImageOffset = null;
+    _cachedImageRect = null;
   }
 }
