@@ -1,0 +1,239 @@
+import 'dart:math' as math;
+import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
+import 'package:flutter/material.dart';
+import '../models/gem_type.dart';
+import '../models/board_position.dart';
+import '../models/special_gem_type.dart';
+
+/// Компонент драгоценного камня
+class GemComponent extends PositionComponent {
+  final GemType gemType;
+  final BoardPosition boardPosition;
+  final double gemSize;
+  bool isSelected = false;
+  bool isMatched = false;
+  SpecialGemType specialType;
+
+  static const double _specialIconSize =
+      0.4; // Размер иконки специального камня
+
+  GemComponent({
+    required this.gemType,
+    required this.boardPosition,
+    required this.gemSize,
+    required Vector2 position,
+    this.specialType = SpecialGemType.none,
+  }) : super(
+         position: position,
+         size: Vector2.all(gemSize),
+         anchor: Anchor.center,
+       );
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+
+    final center = size / 2;
+    final gemPadding = gemSize * 0.03; // Уменьшенный отступ для плотности
+    final rect = Rect.fromCenter(
+      center: Offset(center.x, center.y),
+      width: gemSize - gemPadding * 2,
+      height: gemSize - gemPadding * 2,
+    );
+
+    // Рисуем тень
+    final shadowRect = rect.translate(2, 2);
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(shadowRect, Radius.circular(gemSize * 0.15)),
+      shadowPaint,
+    );
+
+    // Основной квадрат с градиентом
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [gemType.color, gemType.color.withOpacity(0.7)],
+    );
+
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.fill;
+
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(gemSize * 0.15),
+    );
+    canvas.drawRRect(rrect, paint);
+
+    // Внутренняя рамка для объема
+    final innerBorderPaint = Paint()
+      ..color = Colors.white.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final innerRect = rect.deflate(3);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(innerRect, Radius.circular(gemSize * 0.12)),
+      innerBorderPaint,
+    );
+
+    // Блик в верхнем левом углу
+    final highlightRect = Rect.fromLTWH(
+      rect.left + rect.width * 0.15,
+      rect.top + rect.height * 0.15,
+      rect.width * 0.3,
+      rect.height * 0.3,
+    );
+    final highlightPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [Colors.white.withOpacity(0.5), Colors.white.withOpacity(0.0)],
+      ).createShader(highlightRect);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(highlightRect, Radius.circular(gemSize * 0.08)),
+      highlightPaint,
+    );
+
+    // Граница при выделении
+    if (isSelected) {
+      final borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4;
+      final selectedRect = rect.inflate(4);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(selectedRect, Radius.circular(gemSize * 0.18)),
+        borderPaint,
+      );
+    }
+
+    // Рисуем иконку специального камня
+    if (specialType != SpecialGemType.none) {
+      _drawSpecialIcon(canvas, center);
+    }
+  }
+
+  /// Рисует иконку специального камня
+  void _drawSpecialIcon(Canvas canvas, Vector2 center) {
+    final iconPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final iconSize = gemSize * _specialIconSize;
+    final centerOffset = Offset(center.x, center.y);
+
+    switch (specialType) {
+      case SpecialGemType.horizontal:
+        // Горизонтальные стрелки ←→
+        final arrowPath = Path();
+        // Левая стрелка
+        arrowPath.moveTo(center.x - iconSize * 0.4, center.y);
+        arrowPath.lineTo(center.x - iconSize * 0.2, center.y - iconSize * 0.15);
+        arrowPath.lineTo(center.x - iconSize * 0.2, center.y + iconSize * 0.15);
+        arrowPath.close();
+        // Правая стрелка
+        arrowPath.moveTo(center.x + iconSize * 0.4, center.y);
+        arrowPath.lineTo(center.x + iconSize * 0.2, center.y - iconSize * 0.15);
+        arrowPath.lineTo(center.x + iconSize * 0.2, center.y + iconSize * 0.15);
+        arrowPath.close();
+        // Линия
+        arrowPath.addRect(
+          Rect.fromCenter(
+            center: centerOffset,
+            width: iconSize * 0.6,
+            height: iconSize * 0.1,
+          ),
+        );
+        canvas.drawPath(arrowPath, iconPaint);
+        break;
+
+      case SpecialGemType.vertical:
+        // Вертикальные стрелки ↑↓
+        final arrowPath = Path();
+        // Верхняя стрелка
+        arrowPath.moveTo(center.x, center.y - iconSize * 0.4);
+        arrowPath.lineTo(center.x - iconSize * 0.15, center.y - iconSize * 0.2);
+        arrowPath.lineTo(center.x + iconSize * 0.15, center.y - iconSize * 0.2);
+        arrowPath.close();
+        // Нижняя стрелка
+        arrowPath.moveTo(center.x, center.y + iconSize * 0.4);
+        arrowPath.lineTo(center.x - iconSize * 0.15, center.y + iconSize * 0.2);
+        arrowPath.lineTo(center.x + iconSize * 0.15, center.y + iconSize * 0.2);
+        arrowPath.close();
+        // Линия
+        arrowPath.addRect(
+          Rect.fromCenter(
+            center: centerOffset,
+            width: iconSize * 0.1,
+            height: iconSize * 0.6,
+          ),
+        );
+        canvas.drawPath(arrowPath, iconPaint);
+        break;
+
+      case SpecialGemType.bomb:
+        // Звезда взрыва
+        final starPath = Path();
+        final points = 8;
+        for (int i = 0; i < points * 2; i++) {
+          final angle = (i * math.pi) / points;
+          final radius = i.isEven ? iconSize * 0.4 : iconSize * 0.2;
+          final x = center.x + radius * math.cos(angle);
+          final y = center.y + radius * math.sin(angle);
+          if (i == 0) {
+            starPath.moveTo(x, y);
+          } else {
+            starPath.lineTo(x, y);
+          }
+        }
+        starPath.close();
+        canvas.drawPath(starPath, iconPaint);
+        break;
+
+      case SpecialGemType.none:
+        break;
+    }
+  }
+
+  /// Анимация перемещения к новой позиции
+  void moveTo(Vector2 newPosition, {double duration = 0.15}) {
+    add(MoveEffect.to(newPosition, EffectController(duration: duration)));
+  }
+
+  /// Анимация исчезновения
+  Future<void> disappear() async {
+    isMatched = true;
+
+    // Эффект масштабирования и исчезновения
+    final effect = SequenceEffect([
+      ScaleEffect.by(Vector2.all(1.2), EffectController(duration: 0.08)),
+      ScaleEffect.to(Vector2.zero(), EffectController(duration: 0.12)),
+    ]);
+    add(effect);
+    await effect.completed;
+  }
+
+  /// Анимация появления
+  void appear() {
+    scale = Vector2.zero();
+    add(
+      ScaleEffect.to(
+        Vector2.all(1.0),
+        EffectController(duration: 0.3, curve: Curves.elasticOut),
+      ),
+    );
+  }
+
+  /// Эффект дрожания при неверном свопе
+  void shake() {
+    add(
+      SequenceEffect([
+        MoveEffect.by(Vector2(5, 0), EffectController(duration: 0.05)),
+        MoveEffect.by(Vector2(-10, 0), EffectController(duration: 0.1)),
+        MoveEffect.by(Vector2(5, 0), EffectController(duration: 0.05)),
+      ]),
+    );
+  }
+}
