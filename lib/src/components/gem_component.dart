@@ -70,42 +70,34 @@ class GemComponent extends PositionComponent {
 
     // Определяем тип автоматически по расширению
     final imageType = theme.getImageType(imagePath);
-    print('Загрузка изображения для $gemType: $imagePath (тип: $imageType)');
 
     try {
       if (imageType == GemImageType.svg) {
         // Загружаем SVG
         if (_cachedSvgs.containsKey(imagePath)) {
           _loadedSvg = _cachedSvgs[imagePath];
-          print('SVG загружен из кэша: $imagePath');
         } else {
           final svgPath = imagePath.startsWith('assets/')
               ? imagePath.substring(7)
               : imagePath;
-          print('Загрузка SVG: $svgPath');
           final svg = await Svg.load(svgPath);
           _cachedSvgs[imagePath] = svg;
           _loadedSvg = svg;
-          print('SVG успешно загружен: $imagePath');
         }
       } else if (imageType == GemImageType.png) {
         // Загружаем PNG
         if (_cachedImages.containsKey(imagePath)) {
           _loadedImage = _cachedImages[imagePath];
-          print('PNG загружен из кэша: $imagePath');
         } else {
-          print('Загрузка PNG: $imagePath');
           final data = await rootBundle.load(imagePath);
           final bytes = data.buffer.asUint8List();
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
           _cachedImages[imagePath] = frame.image;
           _loadedImage = frame.image;
-          print('PNG успешно загружен: $imagePath');
         }
       }
     } catch (e) {
-      // Игнорируем ошибки - будет рисоваться цветной квадрат
       print('ОШИБКА загрузки изображения $imagePath: $e');
     }
 

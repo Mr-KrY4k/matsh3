@@ -30,7 +30,7 @@ class _GameScreenState extends State<GameScreen> {
     if (isGameOver) return;
 
     setState(() {
-      isGameOver = true;
+      // isGameOver = true;
     });
 
     // Показываем диалог с результатами
@@ -200,24 +200,24 @@ class _GameScreenState extends State<GameScreen> {
                     },
                   ),
                   onTimeChanged: (newTimeLeft) {
-                    setState(() => timeLeft = newTimeLeft);
+                    // setState(() => timeLeft = newTimeLeft);
                   },
                   onScoreChanged: (newScore) {
-                    setState(() => score = newScore);
+                    // setState(() => score = newScore);
                   },
                   onMovesChanged: (newMoves) {
-                    setState(() => moves = newMoves);
+                    // setState(() => moves = newMoves);
                   },
                   onComboChanged: (newCombo) {
-                    setState(() => combo = newCombo);
+                    // setState(() => combo = newCombo);
                   },
                   onMessage: (msg) {
-                    setState(() => message = msg);
+                    // setState(() => message = msg);
                   },
                   // Обработка окончания игры
                   onGameEnd: (finalScore, finalMoves, result) {
                     if (!isGameOver) {
-                      _endGame(result == 'victory');
+                      // _endGame(result == 'victory');
                     }
                   },
                 ),
