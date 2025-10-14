@@ -136,7 +136,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(backgroundColor: Colors.white),
+      appBar: Header(),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,11 +148,12 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   _buildScoreProgressBar(),
                   const SizedBox(height: 12),
-                  // Таймер
-                  _buildTimer(),
-                  const SizedBox(height: 12),
-                  // комбо
-                  _buildStats(),
+                  Row(
+                    children: [
+                      _buildTimer(),
+                      Expanded(child: _buildStats()),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -347,6 +348,37 @@ class _GameScreenState extends State<GameScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+final class Header extends StatelessWidget implements PreferredSizeWidget {
+  const Header({super.key});
+
+  @override
+  Size get preferredSize => Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: double.infinity,
+      padding: EdgeInsets.only(bottom: 2),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFD0F0E3), Color(0xFF3AB374), Color(0xFFE1FFF3)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 10 + MediaQuery.of(context).padding.top,
+          bottom: 10,
+        ),
+      ),
     );
   }
 }
