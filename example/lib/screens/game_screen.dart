@@ -15,8 +15,8 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   // Игровая статистика для UI
 
-  final int targetScore = 200000;
-  final double timeLimit = 6000;
+  final int targetScore = 2000;
+  final double timeLimit = 60;
 
   late final ValueNotifier<int> scoreNotifier = ValueNotifier(0);
   late final ValueNotifier<int> movesNotifier = ValueNotifier(0);
