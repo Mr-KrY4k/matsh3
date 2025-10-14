@@ -46,6 +46,9 @@ class Match3GameWidget extends StatefulWidget {
   /// Callback для системных сообщений
   final Function(String message)? onMessage;
 
+  /// Callback при перемешивании доски (когда нет ходов)
+  final Function()? onShuffle;
+
   /// Callback при окончании игры
   /// Параметры: score - финальный счет, moves - количество ходов, result - результат
   final Function(int score, int moves, String result)? onGameEnd;
@@ -66,6 +69,7 @@ class Match3GameWidget extends StatefulWidget {
     this.onMovesChanged,
     this.onComboChanged,
     this.onMessage,
+    this.onShuffle,
     this.onGameEnd,
     this.onGameReady,
   });
@@ -117,6 +121,10 @@ class _Match3GameWidgetState extends State<Match3GameWidget> {
 
     game.onMessage = (message) {
       Future.microtask(() => widget.onMessage?.call(message));
+    };
+
+    game.onShuffle = () {
+      Future.microtask(() => widget.onShuffle?.call());
     };
 
     game.onGameEnd = (score, moves, result) {

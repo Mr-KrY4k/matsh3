@@ -53,6 +53,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   Function(int moves)? onMovesChanged;
   Function(int combo)? onComboChanged;
   Function(String message)? onMessage;
+  Function()? onShuffle;
   Function(int score, int moves, String result)? onGameEnd;
 
   // Для обработки свайпов
@@ -508,7 +509,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     // Проверяем, есть ли возможные ходы
     while (!boardManager.hasPossibleMoves()) {
       // Уведомляем о перемешивании
-      onMessage?.call('Нет ходов! Перемешиваем...');
+      onShuffle?.call();
       await Future.delayed(const Duration(milliseconds: 1000));
 
       // Перемешиваем доску
@@ -517,9 +518,6 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       // Проверяем снова после перемешивания
       // Если ходов все еще нет, цикл повторится
     }
-
-    // Скрываем сообщение когда ходы найдены
-    onMessage?.call('');
   }
 
   /// Собрать все позиции для взрыва с учетом цепных реакций

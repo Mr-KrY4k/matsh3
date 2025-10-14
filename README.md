@@ -250,15 +250,27 @@ Match3GameWidget(
   onMessage: (message) {
     if (message.isNotEmpty) {
       print('Message: $message');
-      // Например: "Нет ходов! Перемешиваем..."
     }
+  },
+  
+  // Перемешивание доски (когда нет ходов)
+  onShuffle: () {
+    print('Нет ходов! Перемешиваем...');
+    // Показать диалог или уведомление
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('🔄 Нет ходов!'),
+        content: Text('Перемешиваем доску...'),
+      ),
+    );
   },
   
   // Окончание игры
   onGameEnd: (score, moves, result) {
     print('Game Over!');
     print('Score: $score, Moves: $moves, Result: $result');
-    // result может быть: 'victory', 'defeat', 'timeout', и т.д.
+    // result может быть: 'victory', 'timeout', и т.д.
     // Показать экран результатов
   },
 )
@@ -385,6 +397,7 @@ example/
 - `onMovesChanged` (Function(int)?) - callback при изменении ходов
 - `onComboChanged` (Function(int)?) - callback при изменении комбо
 - `onMessage` (Function(String)?) - callback для системных сообщений
+- `onShuffle` (Function()?) - callback при перемешивании доски (когда нет ходов)
 - `onGameEnd` (Function(int, int, String)?) - callback при окончании игры
 
 Виджет сам создает игру внутри себя - вам не нужно ничего настраивать вручную!

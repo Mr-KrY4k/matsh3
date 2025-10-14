@@ -14,12 +14,16 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   // Игровая статистика для UI
-  int score = 0;
-  int moves = 0;
-  int combo = 0;
-  String message = '';
-  double timeLeft = 60.0;
-  bool isGameOver = false;
+
+  final int targetScore = 2000;
+  final double timeLimit = 60;
+
+  late final ValueNotifier<int> scoreNotifier = ValueNotifier(0);
+  late final ValueNotifier<int> movesNotifier = ValueNotifier(0);
+  late final ValueNotifier<int> comboNotifier = ValueNotifier(0);
+  late final ValueNotifier<String> messageNotifier = ValueNotifier('');
+  late final ValueNotifier<double> timeLeftNotifier = ValueNotifier(timeLimit);
+  late final ValueNotifier<bool> isGameOverNotifier = ValueNotifier(false);
 
   @override
   void initState() {
@@ -27,10 +31,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _endGame(bool isVictory) {
-    if (isGameOver) return;
+    if (isGameOverNotifier.value) return;
 
     setState(() {
-      // isGameOver = true;
+      isGameOverNotifier.value = true;
     });
 
     // Показываем диалог с результатами
@@ -73,12 +77,15 @@ class _GameScreenState extends State<GameScreen> {
                             '💎 Очки:',
                             style: TextStyle(fontSize: 18),
                           ),
-                          Text(
-                            '$score',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber,
+                          ValueListenableBuilder(
+                            valueListenable: scoreNotifier,
+                            builder: (context, value, child) => Text(
+                              '${scoreNotifier.value}',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber,
+                              ),
                             ),
                           ),
                         ],
@@ -91,11 +98,14 @@ class _GameScreenState extends State<GameScreen> {
                             '🎯 Ходов:',
                             style: TextStyle(fontSize: 18),
                           ),
-                          Text(
-                            '$moves',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                          ValueListenableBuilder(
+                            valueListenable: movesNotifier,
+                            builder: (context, value, child) => Text(
+                              '$value',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -106,13 +116,6 @@ class _GameScreenState extends State<GameScreen> {
               ],
             ),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // Закрыть диалог
-                  Navigator.of(context).pop(); // Вернуться в меню
-                },
-                child: const Text('В меню'),
-              ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop(); // Закрыть диалог
@@ -155,7 +158,7 @@ class _GameScreenState extends State<GameScreen> {
             ),
 
             // Сообщение (если есть)
-            if (message.isNotEmpty)
+            if (messageNotifier.value.isNotEmpty)
               Container(
                 margin: const EdgeInsets.all(20),
                 padding: const EdgeInsets.symmetric(
@@ -168,7 +171,7 @@ class _GameScreenState extends State<GameScreen> {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Text(
-                  message,
+                  messageNotifier.value,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -183,6 +186,8 @@ class _GameScreenState extends State<GameScreen> {
                 child: Match3GameWidget(
                   rows: 7,
                   columns: 5,
+                  timeLimit: timeLimit,
+                  targetScore: targetScore,
                   theme: Match3Theme(
                     backgroundColor: Colors.white,
                     gemImages: {
@@ -200,24 +205,41 @@ class _GameScreenState extends State<GameScreen> {
                     },
                   ),
                   onTimeChanged: (newTimeLeft) {
-                    // setState(() => timeLeft = newTimeLeft);
+                    timeLeftNotifier.value = newTimeLeft;
                   },
                   onScoreChanged: (newScore) {
-                    // setState(() => score = newScore);
+                    scoreNotifier.value = newScore;
                   },
                   onMovesChanged: (newMoves) {
-                    // setState(() => moves = newMoves);
+                    movesNotifier.value = newMoves;
                   },
                   onComboChanged: (newCombo) {
-                    // setState(() => combo = newCombo);
+                    comboNotifier.value = newCombo;
                   },
                   onMessage: (msg) {
-                    // setState(() => message = msg);
+                    messageNotifier.value = msg;
+                  },
+                  // Callback при перемешивании
+                  onShuffle: () {
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const AlertDialog(
+                          title: Text('🔄 Нет ходов!'),
+                          content: Text('Перемешиваем доску...'),
+                        ),
+                      );
+                      // Автоматически закроем диалог через секунду
+                      Future.delayed(const Duration(milliseconds: 1000), () {
+                        if (mounted) Navigator.of(context).pop();
+                      });
+                    }
                   },
                   // Обработка окончания игры
                   onGameEnd: (finalScore, finalMoves, result) {
-                    if (!isGameOver) {
-                      // _endGame(result == 'victory');
+                    if (!isGameOverNotifier.value) {
+                      _endGame(result == 'victory');
                     }
                   },
                 ),
@@ -230,85 +252,101 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildScoreProgressBar() {
-    final progress = (score / 1000).clamp(0.0, 1.0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Очки: $score / 1000',
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 12,
-            backgroundColor: Colors.black.withOpacity(0.2),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              progress < 0.3
-                  ? Colors.red
-                  : progress < 0.7
-                  ? Colors.orange
-                  : Colors.green,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimer() {
-    final minutes = timeLeft.toInt() ~/ 60;
-    final seconds = timeLeft.toInt() % 60;
-    final color = timeLeft < 10 ? Colors.red : Colors.black;
-
-    return Row(
-      children: [
-        Icon(Icons.timer, color: color, size: 20),
-        const SizedBox(width: 8),
-        Text(
-          '$minutes:${seconds.toString().padLeft(2, '0')}',
-          style: TextStyle(
-            color: color,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStats() {
-    return SizedBox(
-      width: double.infinity,
-      height: 40,
-      child: Row(
-        children: [
-          if (combo > 1) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFD700),
-                borderRadius: BorderRadius.circular(12),
+    return ValueListenableBuilder(
+      valueListenable: scoreNotifier,
+      builder: (context, value, child) {
+        final progress = (value / targetScore).clamp(0.0, 1.0);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Очки: $value / $targetScore',
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
-              child: Text(
-                'COMBO x$combo 🔥',
-                style: const TextStyle(
-                  color: Color(0xFF2C3E50),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12,
+                backgroundColor: Colors.black.withOpacity(0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress < 0.3
+                      ? Colors.red
+                      : progress < 0.7
+                      ? Colors.orange
+                      : Colors.green,
                 ),
               ),
             ),
           ],
-        ],
-      ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTimer() {
+    return ValueListenableBuilder(
+      valueListenable: timeLeftNotifier,
+      builder: (context, value, child) {
+        final minutes = timeLeftNotifier.value.toInt() ~/ timeLimit;
+        final seconds = timeLeftNotifier.value.toInt() % timeLimit.toInt();
+        final color = timeLeftNotifier.value < 10 ? Colors.red : Colors.black;
+        return Row(
+          children: [
+            Icon(Icons.timer, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              '$minutes:${seconds.toString().padLeft(2, '0')}',
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStats() {
+    return ValueListenableBuilder(
+      valueListenable: comboNotifier,
+      builder: (context, value, child) {
+        return SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: Row(
+            children: [
+              if (value > 1) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'COMBO x$value 🔥',
+                    style: const TextStyle(
+                      color: Color(0xFF2C3E50),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
