@@ -15,8 +15,8 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   // Игровая статистика для UI
 
-  final int targetScore = 2000;
-  final double timeLimit = 60;
+  final int targetScore = 200000;
+  final double timeLimit = 6000;
 
   late final ValueNotifier<int> scoreNotifier = ValueNotifier(0);
   late final ValueNotifier<int> movesNotifier = ValueNotifier(0);
@@ -151,13 +151,17 @@ class _GameScreenState extends State<GameScreen> {
                   Row(
                     children: [
                       _buildTimer(),
-                      Expanded(child: _buildStats()),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _buildStats(),
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
-
             // Сообщение (если есть)
             if (messageNotifier.value.isNotEmpty)
               Container(
@@ -294,8 +298,9 @@ class _GameScreenState extends State<GameScreen> {
     return ValueListenableBuilder(
       valueListenable: timeLeftNotifier,
       builder: (context, value, child) {
-        final minutes = timeLeftNotifier.value.toInt() ~/ timeLimit;
-        final seconds = timeLeftNotifier.value.toInt() % timeLimit.toInt();
+        final totalSeconds = timeLeftNotifier.value.toInt();
+        final minutes = totalSeconds ~/ 60;
+        final seconds = totalSeconds % 60;
         final color = timeLeftNotifier.value < 10 ? Colors.red : Colors.black;
         return Row(
           children: [
@@ -323,6 +328,7 @@ class _GameScreenState extends State<GameScreen> {
           width: double.infinity,
           height: 40,
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (value > 1) ...[
                 Container(

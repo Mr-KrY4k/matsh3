@@ -108,9 +108,25 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   Future<void> onLoad() async {
     await super.onLoad();
 
+    // Проверка на валидные размеры
+    if (size.x <= 0 || size.y <= 0) {
+      print(
+        '⚠️  Match3Game: Игра еще не получила размеры ($size). Отменяем инициализацию.',
+      );
+      return;
+    }
+
     // Вычисляем оптимальный размер камня на основе размера экрана
     final availableWidth = size.x - screenPadding * 2;
     final availableHeight = size.y - screenPadding * 2;
+
+    // Проверка доступной области
+    if (availableWidth <= 0 || availableHeight <= 0) {
+      print(
+        '⚠️  Match3Game: Недостаточно места для игры! Отменяем инициализацию.',
+      );
+      return;
+    }
 
     // Выбираем меньший размер, чтобы доска влезла
     final maxGemSizeByWidth = availableWidth / columns;
@@ -136,18 +152,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     );
 
     // Создаем компоненты для всех камней
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < columns; col++) {
-        final pos = BoardPosition(row, col);
-        final gemType = boardManager.getGem(pos);
-
-        if (gemType != null) {
-          final gemComponent = createGemComponent(gemType, pos);
-          gemComponents[row][col] = gemComponent;
-          await add(gemComponent);
-        }
-      }
-    }
+    await _createAllGemComponents();
 
     // Проверяем наличие ходов после инициализации
     while (!boardManager.hasPossibleMoves()) {
@@ -155,28 +160,10 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       boardManager.shuffleBoard();
 
       // Обновляем компоненты
-      for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < columns; col++) {
-          final gem = gemComponents[row][col];
-          if (gem != null) {
-            remove(gem);
-          }
-        }
-      }
+      _removeAllGemComponents();
 
       // Создаем новые компоненты после перемешивания
-      for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < columns; col++) {
-          final pos = BoardPosition(row, col);
-          final gemType = boardManager.getGem(pos);
-
-          if (gemType != null) {
-            final gemComponent = createGemComponent(gemType, pos);
-            gemComponents[row][col] = gemComponent;
-            await add(gemComponent);
-          }
-        }
-      }
+      await _createAllGemComponents();
 
       // Удаляем случайные совпадения если появились
       while (true) {
@@ -193,27 +180,8 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       }
 
       // Обновляем компоненты после очистки совпадений
-      for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < columns; col++) {
-          final gem = gemComponents[row][col];
-          if (gem != null) {
-            remove(gem);
-          }
-        }
-      }
-
-      for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < columns; col++) {
-          final pos = BoardPosition(row, col);
-          final gemType = boardManager.getGem(pos);
-
-          if (gemType != null) {
-            final gemComponent = createGemComponent(gemType, pos);
-            gemComponents[row][col] = gemComponent;
-            await add(gemComponent);
-          }
-        }
-      }
+      _removeAllGemComponents();
+      await _createAllGemComponents();
     }
   }
 
@@ -236,6 +204,38 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       position: Vector2(x, y),
       theme: theme,
     );
+  }
+
+  /// Удалить все компоненты с доски
+  void _removeAllGemComponents() {
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < columns; col++) {
+        final gem = gemComponents[row][col];
+        if (gem != null) {
+          remove(gem);
+          gemComponents[row][col] = null;
+        }
+      }
+    }
+  }
+
+  /// Создать компоненты для всех камней на доске
+  Future<void> _createAllGemComponents({bool withAnimation = false}) async {
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < columns; col++) {
+        final pos = BoardPosition(row, col);
+        final gemType = boardManager.getGem(pos);
+
+        if (gemType != null) {
+          final gemComponent = createGemComponent(gemType, pos);
+          if (withAnimation) {
+            await gemComponent.appear();
+          }
+          gemComponents[row][col] = gemComponent;
+          await add(gemComponent);
+        }
+      }
+    }
   }
 
   /// Получить позицию на доске по координатам экрана
@@ -713,7 +713,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     // Преобразуем камни в специальные
     for (final entry in specialGemsToTransform) {
       entry.key.specialType = entry.value;
-      entry.key.appear();
+      await entry.key.appear();
     }
 
     await Future.delayed(const Duration(milliseconds: 200));
@@ -791,7 +791,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
           // Анимация падения
           final targetY = offsetY + pos.row * gemSize + gemSize / 2;
           gemComponent.moveTo(Vector2(gemComponent.position.x, targetY));
-          gemComponent.appear();
+          await gemComponent.appear();
 
           // Задержка перед следующим камнем в этом столбце (только если не последний)
           if (i < positions.length - 1) {
@@ -812,35 +812,15 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   /// Перемешать доску
   Future<void> shuffleBoard() async {
     // Удаляем все текущие компоненты
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < columns; col++) {
-        final gem = gemComponents[row][col];
-        if (gem != null) {
-          remove(gem);
-          gemComponents[row][col] = null;
-        }
-      }
-    }
+    _removeAllGemComponents();
 
     // Перемешиваем доску
     boardManager.shuffleBoard();
 
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Создаем новые компоненты
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < columns; col++) {
-        final pos = BoardPosition(row, col);
-        final gemType = boardManager.getGem(pos);
-
-        if (gemType != null) {
-          final gemComponent = createGemComponent(gemType, pos);
-          gemComponent.appear();
-          gemComponents[row][col] = gemComponent;
-          await add(gemComponent);
-        }
-      }
-    }
+    // Создаем новые компоненты с анимацией
+    await _createAllGemComponents(withAnimation: true);
 
     // Проверяем и удаляем случайные совпадения после перемешивания
     await Future.delayed(const Duration(milliseconds: 500));

@@ -24,14 +24,13 @@ class GemComponent extends PositionComponent {
       0.4; // Размер иконки специального камня
 
   // Кэш для загруженных изображений (статический - общий для всех компонентов)
+  // SVG теперь растеризуются в Image при загрузке
   static final Map<String, ui.Image> _cachedImages = {};
-  static final Map<String, Svg> _cachedSvgs = {};
 
   ui.Image? _loadedImage;
-  Svg? _loadedSvg;
   ui.Image? _loadedSpecialImage;
-  Svg? _loadedSpecialSvg;
   bool _isLoading = false;
+  bool _isLoadingSpecial = false;
 
   // Кэш для часто используемых объектов рендеринга
   Paint? _shadowPaint;
@@ -43,8 +42,6 @@ class GemComponent extends PositionComponent {
 
   // Кэш для размеров изображений
   static const double _imageScale = 0.7;
-  double? _cachedImageSize;
-  double? _cachedImageOffset;
   Rect? _cachedImageRect;
 
   GemComponent({
@@ -71,6 +68,78 @@ class GemComponent extends PositionComponent {
     }
   }
 
+  /// Универсальный метод загрузки изображения (SVG или PNG)
+  /// Возвращает загруженное изображение или SVG из кэша или создает новое
+  Future<({ui.Image? image, Svg? svg})> _loadImageFromPath(
+    String imagePath,
+  ) async {
+    final imageType = theme.getImageType(imagePath);
+
+    try {
+      if (imageType == GemImageType.svg) {
+        // Проверяем кэш изображений (SVG будет растеризован в Image)
+        final cachedImage = _cachedImages[imagePath];
+        if (cachedImage != null) {
+          return (image: cachedImage, svg: null);
+        }
+
+        // Загружаем SVG и преобразуем его в растровое изображение
+        final svgPath = imagePath.startsWith('assets/')
+            ? imagePath.substring(7)
+            : imagePath;
+        final svg = await Svg.load(svgPath);
+
+        try {
+          // Растеризуем SVG в фиксированное изображение
+          // Используем фиксированный размер для всех SVG (высокое качество)
+          const rasterSize = 256.0;
+          final recorder = ui.PictureRecorder();
+          final canvas = Canvas(recorder);
+
+          // Рендерим SVG напрямую
+          svg.render(canvas, Vector2.all(rasterSize));
+
+          final picture = recorder.endRecording();
+
+          // Создаем изображение с фиксированным размером
+          final image = await picture.toImage(
+            rasterSize.toInt(),
+            rasterSize.toInt(),
+          );
+
+          _cachedImages[imagePath] = image;
+          picture.dispose();
+
+          return (image: image, svg: null);
+        } catch (e) {
+          print('❌ Не удалось растеризовать SVG $imagePath: $e');
+          print('   Используем SVG напрямую');
+          // Возвращаем SVG для рендеринга напрямую (старый способ)
+          return (image: null, svg: svg);
+        }
+      } else if (imageType == GemImageType.png) {
+        // Проверяем кэш PNG
+        final cachedImage = _cachedImages[imagePath];
+        if (cachedImage != null) {
+          return (image: cachedImage, svg: null);
+        }
+
+        // Загружаем новый PNG
+        final data = await rootBundle.load(imagePath);
+        final bytes = data.buffer.asUint8List();
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        final image = frame.image;
+        _cachedImages[imagePath] = image;
+        return (image: image, svg: null);
+      }
+    } catch (e) {
+      print('❌ ОШИБКА загрузки изображения $imagePath: $e');
+    }
+
+    return (image: null, svg: null);
+  }
+
   /// Загрузить изображение для камня
   Future<void> _loadImage() async {
     if (_isLoading) return;
@@ -82,88 +151,43 @@ class GemComponent extends PositionComponent {
       return;
     }
 
-    // Определяем тип автоматически по расширению
-    final imageType = theme.getImageType(imagePath);
-
-    try {
-      if (imageType == GemImageType.svg) {
-        // Загружаем SVG
-        if (_cachedSvgs.containsKey(imagePath)) {
-          _loadedSvg = _cachedSvgs[imagePath];
-        } else {
-          final svgPath = imagePath.startsWith('assets/')
-              ? imagePath.substring(7)
-              : imagePath;
-          final svg = await Svg.load(svgPath);
-          _cachedSvgs[imagePath] = svg;
-          _loadedSvg = svg;
-        }
-      } else if (imageType == GemImageType.png) {
-        // Загружаем PNG
-        if (_cachedImages.containsKey(imagePath)) {
-          _loadedImage = _cachedImages[imagePath];
-        } else {
-          final data = await rootBundle.load(imagePath);
-          final bytes = data.buffer.asUint8List();
-          final codec = await ui.instantiateImageCodec(bytes);
-          final frame = await codec.getNextFrame();
-          _cachedImages[imagePath] = frame.image;
-          _loadedImage = frame.image;
-        }
-      }
-    } catch (e) {
-      print('ОШИБКА загрузки изображения $imagePath: $e');
-    }
+    final result = await _loadImageFromPath(imagePath);
+    _loadedImage = result.image;
 
     _isLoading = false;
   }
 
   /// Загрузить изображение для специального камня
   Future<void> _loadSpecialImage() async {
-    if (specialType == SpecialGemType.none) return;
+    if (_isLoadingSpecial) return;
+    _isLoadingSpecial = true;
+
+    if (specialType == SpecialGemType.none) {
+      _isLoadingSpecial = false;
+      return;
+    }
 
     final imagePath = theme.getSpecialGemImage(specialType);
-    if (imagePath == null || imagePath.isEmpty) return;
-
-    // Определяем тип автоматически по расширению
-    final imageType = theme.getImageType(imagePath);
-
-    try {
-      if (imageType == GemImageType.svg) {
-        // Загружаем SVG
-        if (_cachedSvgs.containsKey(imagePath)) {
-          _loadedSpecialSvg = _cachedSvgs[imagePath];
-        } else {
-          final svgPath = imagePath.startsWith('assets/')
-              ? imagePath.substring(7)
-              : imagePath;
-          final svg = await Svg.load(svgPath);
-          _cachedSvgs[imagePath] = svg;
-          _loadedSpecialSvg = svg;
-        }
-      } else if (imageType == GemImageType.png) {
-        // Загружаем PNG
-        if (_cachedImages.containsKey(imagePath)) {
-          _loadedSpecialImage = _cachedImages[imagePath];
-        } else {
-          final data = await rootBundle.load(imagePath);
-          final bytes = data.buffer.asUint8List();
-          final codec = await ui.instantiateImageCodec(bytes);
-          final frame = await codec.getNextFrame();
-          _cachedImages[imagePath] = frame.image;
-          _loadedSpecialImage = frame.image;
-        }
-      }
-    } catch (e) {
-      print(
-        'Не удалось загрузить изображение специального камня $imagePath: $e',
-      );
+    if (imagePath == null || imagePath.isEmpty) {
+      _isLoadingSpecial = false;
+      return;
     }
+
+    final result = await _loadImageFromPath(imagePath);
+    _loadedSpecialImage = result.image;
+
+    _isLoadingSpecial = false;
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+
+    // Проверка на валидность размеров
+    if (gemSize <= 0 || gemSize.isNaN || gemSize.isInfinite) {
+      print('❌ GemComponent: Невалидный gemSize = $gemSize для типа $gemType');
+      return;
+    }
 
     final center = size / 2;
     final gemPadding = gemSize * 0.03;
@@ -175,6 +199,14 @@ class GemComponent extends PositionComponent {
       height: gemSize - gemPadding * 2,
     );
     final rect = _cachedRect!;
+
+    // Проверка на валидность rect
+    if (rect.width <= 0 || rect.width.isNaN || rect.width.isInfinite) {
+      print(
+        '❌ GemComponent: Невалидный rect.width = ${rect.width} для типа $gemType',
+      );
+      return;
+    }
 
     _cachedRRect ??= RRect.fromRectAndRadius(
       rect,
@@ -214,23 +246,8 @@ class GemComponent extends PositionComponent {
     // НО: для специальных камней рисуем только специальную иконку
     if (specialType == SpecialGemType.none) {
       // Обычный камень - рисуем его изображение (если есть)
-      if (_loadedSvg != null) {
-        // Рисуем SVG (кэшируем размеры)
-        _cachedImageSize ??= rect.width * _imageScale;
-        _cachedImageOffset ??= (rect.width - _cachedImageSize!) / 2;
-
-        canvas.save();
-        canvas.translate(
-          rect.left + _cachedImageOffset!,
-          rect.top + _cachedImageOffset!,
-        );
-        _loadedSvg!.render(
-          canvas,
-          Vector2(_cachedImageSize!, _cachedImageSize!),
-        );
-        canvas.restore();
-      } else if (_loadedImage != null) {
-        // Рисуем PNG (кэшируем rect)
+      if (_loadedImage != null) {
+        // Рисуем изображение (PNG или растеризованный SVG) - кэшируем rect
         _cachedImageRect ??= Rect.fromCenter(
           center: rect.center,
           width: rect.width * _imageScale,
@@ -257,9 +274,7 @@ class GemComponent extends PositionComponent {
     // Рисуем иконку специального камня (поверх всего)
     if (specialType != SpecialGemType.none) {
       // Если есть загруженное изображение специального камня - рисуем его
-      if (_loadedSpecialSvg != null) {
-        _drawSpecialImageSvg(canvas, rect);
-      } else if (_loadedSpecialImage != null) {
+      if (_loadedSpecialImage != null) {
         _drawSpecialImagePng(canvas, rect);
       } else {
         // Иначе рисуем дефолтную иконку (стрелки/звезда)
@@ -268,19 +283,7 @@ class GemComponent extends PositionComponent {
     }
   }
 
-  /// Рисует SVG изображение специального камня
-  void _drawSpecialImageSvg(Canvas canvas, Rect rect) {
-    final imageScale = 0.7; // Такой же размер как у обычных камней
-    final imageSize = rect.width * imageScale;
-    final imageOffset = (rect.width - imageSize) / 2;
-
-    canvas.save();
-    canvas.translate(rect.left + imageOffset, rect.top + imageOffset);
-    _loadedSpecialSvg!.render(canvas, Vector2(imageSize, imageSize));
-    canvas.restore();
-  }
-
-  /// Рисует PNG изображение специального камня
+  /// Рисует изображение специального камня (PNG или растеризованный SVG)
   void _drawSpecialImagePng(Canvas canvas, Rect rect) {
     final imageScale = 0.7; // Такой же размер как у обычных камней
     final imageSize = rect.width * imageScale;
@@ -399,7 +402,7 @@ class GemComponent extends PositionComponent {
   }
 
   /// Анимация появления
-  void appear() {
+  Future<void> appear() async {
     scale = Vector2.zero();
     add(
       ScaleEffect.to(
@@ -410,8 +413,18 @@ class GemComponent extends PositionComponent {
 
     // Загружаем изображение специального камня если оно есть
     if (specialType != SpecialGemType.none) {
-      _loadSpecialImage();
+      await _loadSpecialImage();
     }
+  }
+
+  /// Очистить весь кэш изображений (полезно для освобождения памяти)
+  static void clearImageCache() {
+    _cachedImages.clear();
+  }
+
+  /// Очистить кэш конкретного изображения
+  static void clearCachedImage(String imagePath) {
+    _cachedImages.remove(imagePath);
   }
 
   /// Эффект дрожания при неверном свопе
@@ -432,8 +445,6 @@ class GemComponent extends PositionComponent {
     _cachedRect = null;
     _cachedRRect = null;
     _cachedShadowRRect = null;
-    _cachedImageSize = null;
-    _cachedImageOffset = null;
     _cachedImageRect = null;
   }
 }
