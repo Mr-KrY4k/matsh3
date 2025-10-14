@@ -29,6 +29,8 @@ class GemComponent extends PositionComponent {
 
   ui.Image? _loadedImage;
   Svg? _loadedSvg;
+  ui.Image? _loadedSpecialImage;
+  Svg? _loadedSpecialSvg;
   bool _isLoading = false;
 
   GemComponent({
@@ -48,8 +50,9 @@ class GemComponent extends PositionComponent {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Загружаем изображение если нужно
-    if (theme.gemImageType != GemImageType.color) {
+    // Загружаем изображение если указан путь
+    final imagePath = theme.getGemImage(gemType);
+    if (imagePath != null && imagePath.isNotEmpty) {
       await _loadImage();
     }
   }
@@ -65,38 +68,91 @@ class GemComponent extends PositionComponent {
       return;
     }
 
+    // Определяем тип автоматически по расширению
+    final imageType = theme.getImageType(imagePath);
+    print('Загрузка изображения для $gemType: $imagePath (тип: $imageType)');
+
     try {
-      if (theme.gemImageType == GemImageType.svg) {
+      if (imageType == GemImageType.svg) {
         // Загружаем SVG
         if (_cachedSvgs.containsKey(imagePath)) {
           _loadedSvg = _cachedSvgs[imagePath];
+          print('SVG загружен из кэша: $imagePath');
         } else {
           final svgPath = imagePath.startsWith('assets/')
               ? imagePath.substring(7)
               : imagePath;
+          print('Загрузка SVG: $svgPath');
           final svg = await Svg.load(svgPath);
           _cachedSvgs[imagePath] = svg;
           _loadedSvg = svg;
+          print('SVG успешно загружен: $imagePath');
         }
-      } else if (theme.gemImageType == GemImageType.png) {
+      } else if (imageType == GemImageType.png) {
         // Загружаем PNG
         if (_cachedImages.containsKey(imagePath)) {
           _loadedImage = _cachedImages[imagePath];
+          print('PNG загружен из кэша: $imagePath');
         } else {
+          print('Загрузка PNG: $imagePath');
           final data = await rootBundle.load(imagePath);
           final bytes = data.buffer.asUint8List();
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
           _cachedImages[imagePath] = frame.image;
           _loadedImage = frame.image;
+          print('PNG успешно загружен: $imagePath');
         }
       }
     } catch (e) {
       // Игнорируем ошибки - будет рисоваться цветной квадрат
-      print('Не удалось загрузить изображение $imagePath: $e');
+      print('ОШИБКА загрузки изображения $imagePath: $e');
     }
 
     _isLoading = false;
+  }
+
+  /// Загрузить изображение для специального камня
+  Future<void> _loadSpecialImage() async {
+    if (specialType == SpecialGemType.none) return;
+
+    final imagePath = theme.getSpecialGemImage(specialType);
+    if (imagePath == null || imagePath.isEmpty) return;
+
+    // Определяем тип автоматически по расширению
+    final imageType = theme.getImageType(imagePath);
+
+    try {
+      if (imageType == GemImageType.svg) {
+        // Загружаем SVG
+        if (_cachedSvgs.containsKey(imagePath)) {
+          _loadedSpecialSvg = _cachedSvgs[imagePath];
+        } else {
+          final svgPath = imagePath.startsWith('assets/')
+              ? imagePath.substring(7)
+              : imagePath;
+          final svg = await Svg.load(svgPath);
+          _cachedSvgs[imagePath] = svg;
+          _loadedSpecialSvg = svg;
+        }
+      } else if (imageType == GemImageType.png) {
+        // Загружаем PNG
+        if (_cachedImages.containsKey(imagePath)) {
+          _loadedSpecialImage = _cachedImages[imagePath];
+        } else {
+          final data = await rootBundle.load(imagePath);
+          final bytes = data.buffer.asUint8List();
+          final codec = await ui.instantiateImageCodec(bytes);
+          final frame = await codec.getNextFrame();
+          _cachedImages[imagePath] = frame.image;
+          _loadedSpecialImage = frame.image;
+        }
+      }
+    } catch (e) {
+      print(
+        'Не удалось загрузить изображение специального камня $imagePath: $e',
+      );
+    }
   }
 
   @override
@@ -126,44 +182,51 @@ class GemComponent extends PositionComponent {
       shadowPaint,
     );
 
-    // Рисуем изображение или цветной квадрат
-    if (theme.gemImageType == GemImageType.svg && _loadedSvg != null) {
-      // Рисуем SVG
-      canvas.save();
-      canvas.translate(rect.left, rect.top);
-      canvas.clipRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, rect.width, rect.height),
-          Radius.circular(gemSize * 0.15),
-        ),
-      );
-      _loadedSvg!.render(canvas, Vector2(rect.width, rect.height));
-      canvas.restore();
-    } else if (theme.gemImageType == GemImageType.png && _loadedImage != null) {
-      // Рисуем PNG
-      canvas.save();
-      canvas.clipRRect(rrect);
-      paintImage(
-        canvas: canvas,
-        rect: rect,
-        image: _loadedImage!,
-        fit: BoxFit.cover,
-      );
-      canvas.restore();
-    } else {
-      // Рисуем цветной квадрат (дефолт или если изображение не загрузилось)
-      final gemColor = theme.getGemColor(gemType);
-      final gradient = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [gemColor, gemColor.withOpacity(0.7)],
-      );
+    // Сначала ВСЕГДА рисуем цветной квадрат (как фон)
+    final gemColor = theme.getGemColor(gemType);
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [gemColor, gemColor.withOpacity(0.7)],
+    );
 
-      final paint = Paint()
-        ..shader = gradient.createShader(rect)
-        ..style = PaintingStyle.fill;
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.fill;
 
-      canvas.drawRRect(rrect, paint);
+    canvas.drawRRect(rrect, paint);
+
+    // Потом рисуем изображение ПОВЕРХ (если есть)
+    // НО: для специальных камней рисуем только специальную иконку
+    if (specialType == SpecialGemType.none) {
+      // Обычный камень - рисуем его изображение (если есть)
+      if (_loadedSvg != null) {
+        // Рисуем SVG
+        final imageScale = 0.7;
+        final imageSize = rect.width * imageScale;
+        final imageOffset = (rect.width - imageSize) / 2;
+
+        canvas.save();
+        canvas.translate(rect.left + imageOffset, rect.top + imageOffset);
+        _loadedSvg!.render(canvas, Vector2(imageSize, imageSize));
+        canvas.restore();
+      } else if (_loadedImage != null) {
+        // Рисуем PNG
+        final imageScale = 0.7;
+        final imageSize = rect.width * imageScale;
+        final imageRect = Rect.fromCenter(
+          center: rect.center,
+          width: imageSize,
+          height: imageSize,
+        );
+
+        paintImage(
+          canvas: canvas,
+          rect: imageRect,
+          image: _loadedImage!,
+          fit: BoxFit.contain,
+        );
+      }
     }
 
     // Затемнение при выделении
@@ -174,10 +237,48 @@ class GemComponent extends PositionComponent {
       canvas.drawRRect(rrect, darkenPaint);
     }
 
-    // Рисуем иконку специального камня
+    // Рисуем иконку специального камня (поверх всего)
     if (specialType != SpecialGemType.none) {
-      _drawSpecialIcon(canvas, center);
+      // Если есть загруженное изображение специального камня - рисуем его
+      if (_loadedSpecialSvg != null) {
+        _drawSpecialImageSvg(canvas, rect);
+      } else if (_loadedSpecialImage != null) {
+        _drawSpecialImagePng(canvas, rect);
+      } else {
+        // Иначе рисуем дефолтную иконку (стрелки/звезда)
+        _drawSpecialIcon(canvas, center);
+      }
     }
+  }
+
+  /// Рисует SVG изображение специального камня
+  void _drawSpecialImageSvg(Canvas canvas, Rect rect) {
+    final imageScale = 0.7; // Такой же размер как у обычных камней
+    final imageSize = rect.width * imageScale;
+    final imageOffset = (rect.width - imageSize) / 2;
+
+    canvas.save();
+    canvas.translate(rect.left + imageOffset, rect.top + imageOffset);
+    _loadedSpecialSvg!.render(canvas, Vector2(imageSize, imageSize));
+    canvas.restore();
+  }
+
+  /// Рисует PNG изображение специального камня
+  void _drawSpecialImagePng(Canvas canvas, Rect rect) {
+    final imageScale = 0.7; // Такой же размер как у обычных камней
+    final imageSize = rect.width * imageScale;
+    final imageRect = Rect.fromCenter(
+      center: rect.center,
+      width: imageSize,
+      height: imageSize,
+    );
+
+    paintImage(
+      canvas: canvas,
+      rect: imageRect,
+      image: _loadedSpecialImage!,
+      fit: BoxFit.contain,
+    );
   }
 
   /// Рисует иконку специального камня
@@ -289,6 +390,11 @@ class GemComponent extends PositionComponent {
         EffectController(duration: 0.3, curve: Curves.elasticOut),
       ),
     );
+
+    // Загружаем изображение специального камня если оно есть
+    if (specialType != SpecialGemType.none) {
+      _loadSpecialImage();
+    }
   }
 
   /// Эффект дрожания при неверном свопе

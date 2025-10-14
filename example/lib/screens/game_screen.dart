@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:match3/match3.dart';
 
+import '../gen/assets.gen.dart';
+
 /// Экран игры с UI оверлеем
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -181,7 +183,22 @@ class _GameScreenState extends State<GameScreen> {
                 child: Match3GameWidget(
                   rows: 7,
                   columns: 5,
-                  theme: const Match3Theme(backgroundColor: Colors.white),
+                  theme: Match3Theme(
+                    backgroundColor: Colors.white,
+                    gemImages: {
+                      GemType.red: Assets.svg.red.path,
+                      GemType.blue: Assets.svg.blue.path,
+                      GemType.green: Assets.svg.green.path,
+                      GemType.yellow: Assets.svg.yellow.path,
+                      GemType.purple: Assets.svg.purple.path,
+                      GemType.orange: Assets.svg.orange.path,
+                    },
+                    specialGemImages: {
+                      SpecialGemType.bomb: Assets.svg.bomb.path,
+                      SpecialGemType.horizontal: Assets.svg.horizontal.path,
+                      SpecialGemType.vertical: Assets.svg.vertical.path,
+                    },
+                  ),
                   onTimeChanged: (newTimeLeft) {
                     setState(() => timeLeft = newTimeLeft);
                   },

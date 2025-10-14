@@ -2,7 +2,7 @@
 export 'src/widgets/match3_game_widget.dart';
 
 // Экспорт темы
-export 'src/theme/match3_theme.dart' show Match3Theme, GemImageType;
+export 'src/theme/match3_theme.dart' show Match3Theme;
 
 // Экспорт игровой логики
 export 'src/game/match3_game.dart';

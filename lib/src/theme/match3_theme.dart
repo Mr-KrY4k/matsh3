@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/gem_type.dart';
+import '../models/special_gem_type.dart';
 
 /// Тип изображения камня
 enum GemImageType {
@@ -28,11 +29,10 @@ enum GemImageType {
 /// ```dart
 /// final theme = Match3Theme(
 ///   backgroundColor: Color(0xFF2C3E50),
-///   gemImageType: GemImageType.png,
 ///   gemImages: {
-///     GemType.red: 'assets/gems/red.png',
-///     GemType.blue: 'assets/gems/blue.png',
-///     // ...
+///     GemType.red: 'assets/gems/red.png',    // Автоматически PNG
+///     GemType.blue: 'assets/gems/blue.svg',  // Автоматически SVG
+///     // Тип определяется по расширению
 ///   },
 /// );
 /// ```
@@ -40,14 +40,16 @@ class Match3Theme {
   /// Цвет фона игры
   final Color backgroundColor;
 
-  /// Тип изображения камней
-  final GemImageType gemImageType;
-
-  /// Цвета для каждого типа камня (используется если gemImageType = color)
+  /// Цвета для каждого типа камня (используется если нет изображений)
   final Map<GemType, Color> gemColors;
 
-  /// Пути к изображениям для каждого типа камня (используется если gemImageType = png/svg)
+  /// Пути к изображениям для каждого типа камня (PNG или SVG)
+  /// Тип определяется автоматически по расширению файла
   final Map<GemType, String> gemImages;
+
+  /// Пути к изображениям для специальных камней (необязательно)
+  /// Если не указано, будут рисоваться дефолтные иконки
+  final Map<SpecialGemType, String> specialGemImages;
 
   /// Дефолтный цвет фона
   static const Color defaultBackgroundColor = Color(0xFF2C3E50);
@@ -59,14 +61,14 @@ class Match3Theme {
     GemType.green: Color(0xFF2ECC71),
     GemType.yellow: Color(0xFFF39C12),
     GemType.purple: Color(0xFF9B59B6),
-    GemType.pink: Color(0xFFFF4081),
+    GemType.orange: Color(0xFFF07720),
   };
 
   const Match3Theme({
     this.backgroundColor = defaultBackgroundColor,
-    this.gemImageType = GemImageType.color,
     this.gemColors = defaultGemColors,
     this.gemImages = const {},
+    this.specialGemImages = const {},
   });
 
   /// Получить цвет для типа камня
@@ -77,5 +79,25 @@ class Match3Theme {
   /// Получить путь к изображению для типа камня
   String? getGemImage(GemType type) {
     return gemImages[type];
+  }
+
+  /// Получить путь к изображению для специального камня
+  String? getSpecialGemImage(SpecialGemType type) {
+    return specialGemImages[type];
+  }
+
+  /// Определить тип изображения по расширению файла
+  GemImageType getImageType(String? path) {
+    if (path == null || path.isEmpty) return GemImageType.color;
+
+    if (path.toLowerCase().endsWith('.svg')) {
+      return GemImageType.svg;
+    } else if (path.toLowerCase().endsWith('.png') ||
+        path.toLowerCase().endsWith('.jpg') ||
+        path.toLowerCase().endsWith('.jpeg')) {
+      return GemImageType.png;
+    }
+
+    return GemImageType.color;
   }
 }

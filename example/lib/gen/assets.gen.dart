@@ -14,26 +14,36 @@ import 'package:flutter/services.dart';
 class $AssetsSvgGen {
   const $AssetsSvgGen();
 
-  /// File path: assets/svg/card.svg
-  SvgGenImage get card => const SvgGenImage('assets/svg/card.svg');
+  /// File path: assets/svg/blue.svg
+  SvgGenImage get blue => const SvgGenImage('assets/svg/blue.svg');
 
-  /// File path: assets/svg/gift.svg
-  SvgGenImage get gift => const SvgGenImage('assets/svg/gift.svg');
+  /// File path: assets/svg/bomb.svg
+  SvgGenImage get bomb => const SvgGenImage('assets/svg/bomb.svg');
 
-  /// File path: assets/svg/good.svg
-  SvgGenImage get good => const SvgGenImage('assets/svg/good.svg');
+  /// File path: assets/svg/green.svg
+  SvgGenImage get green => const SvgGenImage('assets/svg/green.svg');
 
-  /// File path: assets/svg/logo_app.svg
-  SvgGenImage get logoApp => const SvgGenImage('assets/svg/logo_app.svg');
+  /// File path: assets/svg/horizontal.svg
+  SvgGenImage get horizontal => const SvgGenImage('assets/svg/horizontal.svg');
 
-  /// File path: assets/svg/rub.svg
-  SvgGenImage get rub => const SvgGenImage('assets/svg/rub.svg');
+  /// File path: assets/svg/orange.svg
+  SvgGenImage get orange => const SvgGenImage('assets/svg/orange.svg');
 
-  /// File path: assets/svg/wallet.svg
-  SvgGenImage get wallet => const SvgGenImage('assets/svg/wallet.svg');
+  /// File path: assets/svg/purple.svg
+  SvgGenImage get purple => const SvgGenImage('assets/svg/purple.svg');
+
+  /// File path: assets/svg/red.svg
+  SvgGenImage get red => const SvgGenImage('assets/svg/red.svg');
+
+  /// File path: assets/svg/vertical.svg
+  SvgGenImage get vertical => const SvgGenImage('assets/svg/vertical.svg');
+
+  /// File path: assets/svg/yellow.svg
+  SvgGenImage get yellow => const SvgGenImage('assets/svg/yellow.svg');
 
   /// List of all assets
-  List<SvgGenImage> get values => [card, gift, good, logoApp, rub, wallet];
+  List<SvgGenImage> get values =>
+      [blue, bomb, green, horizontal, orange, purple, red, vertical, yellow];
 }
 
 class Assets {

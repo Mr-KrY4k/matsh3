@@ -610,35 +610,34 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     final alreadyProcessed = <BoardPosition>{};
 
     for (final match in matches) {
-      // Проверяем, есть ли уже специальный камень в этом совпадении
-      BoardPosition? existingSpecialPos;
-      SpecialGemType? existingSpecialType;
+      // Собираем ВСЕ специальные камни в этом совпадении
+      final specialGemsInMatch = <MapEntry<BoardPosition, SpecialGemType>>[];
 
       for (final pos in match.positions) {
         final gem = gemComponents[pos.row][pos.col];
         if (gem != null && gem.specialType != SpecialGemType.none) {
-          existingSpecialPos = pos;
-          existingSpecialType = gem.specialType;
-          break;
+          specialGemsInMatch.add(MapEntry(pos, gem.specialType));
         }
       }
 
-      // Если есть специальный камень в совпадении - собираем ВСЕ позиции с цепной реакцией
-      if (existingSpecialPos != null && existingSpecialType != null) {
-        final beforeCount = alreadyProcessed.length;
+      // Если есть специальные камни - активируем каждый из них
+      if (specialGemsInMatch.isNotEmpty) {
+        for (final entry in specialGemsInMatch) {
+          final beforeCount = alreadyProcessed.length;
 
-        // Рекурсивно собираем все позиции (включая цепные специальные камни)
-        final explosionPositions = _collectExplosionPositions(
-          existingSpecialPos,
-          existingSpecialType,
-          alreadyProcessed,
-        );
-        allPositionsToRemove.addAll(explosionPositions);
+          // Рекурсивно собираем все позиции (включая цепные специальные камни)
+          final explosionPositions = _collectExplosionPositions(
+            entry.key,
+            entry.value,
+            alreadyProcessed,
+          );
+          allPositionsToRemove.addAll(explosionPositions);
 
-        // Увеличиваем комбо за каждый активированный специальный камень
-        final activatedCount = alreadyProcessed.length - beforeCount;
-        combo += activatedCount;
-        onComboChanged?.call(combo);
+          // Увеличиваем комбо за каждый активированный специальный камень
+          final activatedCount = alreadyProcessed.length - beforeCount;
+          combo += activatedCount;
+          onComboChanged?.call(combo);
+        }
       }
 
       // Добавляем позиции из обычного совпадения
