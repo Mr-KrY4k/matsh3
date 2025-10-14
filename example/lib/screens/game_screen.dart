@@ -57,7 +57,9 @@ class _GameScreenState extends State<GameScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  isVictory ? 'Вы набрали 1000 очков!' : 'Попробуйте еще раз',
+                  isVictory
+                      ? 'Вы набрали $targetScore очков!'
+                      : 'Попробуйте еще раз',
                   style: const TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
