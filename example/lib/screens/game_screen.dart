@@ -1,14 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:match3/match3.dart';
-import 'game_over_screen.dart';
 
 /// Экран игры с UI оверлеем
 class GameScreen extends StatefulWidget {
-  final int rows;
-  final int columns;
-
-  const GameScreen({super.key, required this.rows, required this.columns});
+  const GameScreen({super.key});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -35,19 +31,96 @@ class _GameScreenState extends State<GameScreen> {
       isGameOver = true;
     });
 
-    // Показываем экран результатов
+    // Показываем диалог с результатами
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => GameOverScreen(
-              score: score,
-              moves: moves,
-              isVictory: isVictory,
-              rows: widget.rows,
-              columns: widget.columns,
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text(
+              isVictory ? '🎉 Победа!' : '⏰ Время вышло',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: isVictory ? Colors.green : Colors.orange,
+              ),
+              textAlign: TextAlign.center,
             ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isVictory ? 'Вы набрали 1000 очков!' : 'Попробуйте еще раз',
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            '💎 Очки:',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            '$score',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            '🎯 Ходов:',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            '$moves',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Закрыть диалог
+                  Navigator.of(context).pop(); // Вернуться в меню
+                },
+                child: const Text('В меню'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Закрыть диалог
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const GameScreen()),
+                  );
+                },
+                child: const Text('Новая игра'),
+              ),
+            ],
           ),
         );
       }
@@ -57,54 +130,23 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
+      backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // UI панель сверху
-            Container(
+            //прогресс бар
+            Padding(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.5), Colors.transparent],
-                ),
-              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Кнопка домой и прогресс бар
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(child: _buildScoreProgressBar()),
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.home,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
+                  _buildScoreProgressBar(),
                   const SizedBox(height: 12),
-
                   // Таймер
                   _buildTimer(),
                   const SizedBox(height: 12),
-
-                  // Ходы и комбо
+                  // комбо
                   _buildStats(),
                 ],
               ),
@@ -137,8 +179,8 @@ class _GameScreenState extends State<GameScreen> {
             Expanded(
               child: Center(
                 child: Match3GameWidget(
-                  rows: widget.rows,
-                  columns: widget.columns,
+                  rows: 7,
+                  columns: 5,
                   theme: const Match3Theme(backgroundColor: Colors.white),
                   onTimeChanged: (newTimeLeft) {
                     setState(() => timeLeft = newTimeLeft);
@@ -179,7 +221,7 @@ class _GameScreenState extends State<GameScreen> {
         Text(
           'Очки: $score / 1000',
           style: const TextStyle(
-            color: Colors.white,
+            color: Colors.black,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -190,7 +232,7 @@ class _GameScreenState extends State<GameScreen> {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 12,
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.black.withOpacity(0.2),
             valueColor: AlwaysStoppedAnimation<Color>(
               progress < 0.3
                   ? Colors.red
@@ -207,7 +249,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildTimer() {
     final minutes = timeLeft.toInt() ~/ 60;
     final seconds = timeLeft.toInt() % 60;
-    final color = timeLeft < 10 ? Colors.red : Colors.white;
+    final color = timeLeft < 10 ? Colors.red : Colors.black;
 
     return Row(
       children: [
@@ -226,35 +268,30 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildStats() {
-    return Row(
-      children: [
-        Text(
-          'Ходы: $moves',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        if (combo > 1) ...[
-          const SizedBox(width: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFD700),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'COMBO x$combo 🔥',
-              style: const TextStyle(
-                color: Color(0xFF2C3E50),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+    return SizedBox(
+      width: double.infinity,
+      height: 40,
+      child: Row(
+        children: [
+          if (combo > 1) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'COMBO x$combo 🔥',
+                style: const TextStyle(
+                  color: Color(0xFF2C3E50),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

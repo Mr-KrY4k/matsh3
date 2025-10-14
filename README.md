@@ -34,6 +34,8 @@ Match3GameWidget(
 ### Темы и кастомизация
 - 🎨 Настройка фона игры
 - 🎨 Настройка цветов для каждого типа камня
+- 🖼️ Поддержка PNG и SVG изображений для камней
+- 💾 Автоматическое кэширование изображений
 - 🎨 Дефолтные значения уже настроены
 
 ### Специальные камни
@@ -138,10 +140,11 @@ class _GameScreenState extends State<GameScreen> {
 
 По умолчанию игра использует стандартные цвета. Если хотите изменить внешний вид:
 
+#### Тема с цветами
+
 ```dart
-// Создайте свою тему
 final myTheme = Match3Theme(
-  backgroundColor: Color(0xFF1a1a2e),  // Ваш фон
+  backgroundColor: Color(0xFF1a1a2e),
   gemColors: {
     GemType.red: Color(0xFFFF6B6B),
     GemType.blue: Color(0xFF4ECDC4),
@@ -152,21 +155,48 @@ final myTheme = Match3Theme(
   },
 );
 
-// Используйте её в игре
-Match3GameWidget(
-  theme: myTheme,
-  rows: 8,
-  columns: 8,
-  // ...
-)
-
-// Или используйте дефолтную тему (не передавая theme)
-Match3GameWidget(
-  rows: 8,
-  columns: 8,
-  // тема будет стандартной
-)
+Match3GameWidget(theme: myTheme);
 ```
+
+#### Тема с PNG изображениями
+
+```dart
+final pngTheme = Match3Theme(
+  backgroundColor: Color(0xFF2C3E50),
+  gemImageType: GemImageType.png,
+  gemImages: {
+    GemType.red: 'assets/gems/red.png',
+    GemType.blue: 'assets/gems/blue.png',
+    GemType.green: 'assets/gems/green.png',
+    GemType.yellow: 'assets/gems/yellow.png',
+    GemType.purple: 'assets/gems/purple.png',
+    GemType.pink: 'assets/gems/pink.png',
+  },
+);
+
+Match3GameWidget(theme: pngTheme);
+```
+
+#### Тема с SVG изображениями
+
+```dart
+final svgTheme = Match3Theme(
+  backgroundColor: Color(0xFF2C3E50),
+  gemImageType: GemImageType.svg,
+  gemImages: {
+    GemType.red: 'assets/gems/red.svg',
+    GemType.blue: 'assets/gems/blue.svg',
+    GemType.green: 'assets/gems/green.svg',
+    GemType.yellow: 'assets/gems/yellow.svg',
+    GemType.purple: 'assets/gems/purple.svg',
+    GemType.pink: 'assets/gems/pink.svg',
+  },
+);
+
+Match3GameWidget(theme: svgTheme);
+```
+
+**Примечание:** Изображения кэшируются автоматически для оптимальной производительности.
 
 ### Все доступные callbacks
 
@@ -359,9 +389,14 @@ example/
 
 Параметры (все необязательные):
 - `backgroundColor` (Color, default: `Color(0xFF2C3E50)`) - цвет фона игры
-- `gemColors` (Map<GemType, Color>, default: стандартные яркие цвета) - цвета для каждого типа камня
+- `gemImageType` (GemImageType, default: `GemImageType.color`) - тип отображения:
+  - `GemImageType.color` - цветные квадраты (по умолчанию)
+  - `GemImageType.png` - PNG изображения
+  - `GemImageType.svg` - SVG изображения
+- `gemColors` (Map<GemType, Color>) - цвета для каждого типа камня
+- `gemImages` (Map<GemType, String>) - пути к изображениям (для PNG/SVG)
 
-Если не передавать параметры, будут использованы стандартные значения.
+Если не передавать параметры, будут использованы стандартные цветные квадраты.
 
 ### Match3Game (для продвинутых)
 Внутренний класс игры на базе FlameGame. Обычно вам не нужно работать с ним напрямую, но он доступен если нужна продвинутая кастомизация.

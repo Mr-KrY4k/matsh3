@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/menu_screen.dart';
+import 'screens/game_screen.dart';
 
 void main() {
   runApp(const Match3ExampleApp());
@@ -17,7 +17,7 @@ class Match3ExampleApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MenuScreen(),
+      home: GameScreen(),
     );
   }
 }

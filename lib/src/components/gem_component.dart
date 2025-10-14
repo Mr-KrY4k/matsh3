@@ -1,7 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flame_svg/flame_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/gem_type.dart';
 import '../models/board_position.dart';
 import '../models/special_gem_type.dart';
@@ -20,6 +23,14 @@ class GemComponent extends PositionComponent {
   static const double _specialIconSize =
       0.4; // Размер иконки специального камня
 
+  // Кэш для загруженных изображений (статический - общий для всех компонентов)
+  static final Map<String, ui.Image> _cachedImages = {};
+  static final Map<String, Svg> _cachedSvgs = {};
+
+  ui.Image? _loadedImage;
+  Svg? _loadedSvg;
+  bool _isLoading = false;
+
   GemComponent({
     required this.gemType,
     required this.boardPosition,
@@ -34,15 +45,75 @@ class GemComponent extends PositionComponent {
        );
 
   @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    // Загружаем изображение если нужно
+    if (theme.gemImageType != GemImageType.color) {
+      await _loadImage();
+    }
+  }
+
+  /// Загрузить изображение для камня
+  Future<void> _loadImage() async {
+    if (_isLoading) return;
+    _isLoading = true;
+
+    final imagePath = theme.getGemImage(gemType);
+    if (imagePath == null || imagePath.isEmpty) {
+      _isLoading = false;
+      return;
+    }
+
+    try {
+      if (theme.gemImageType == GemImageType.svg) {
+        // Загружаем SVG
+        if (_cachedSvgs.containsKey(imagePath)) {
+          _loadedSvg = _cachedSvgs[imagePath];
+        } else {
+          final svgPath = imagePath.startsWith('assets/')
+              ? imagePath.substring(7)
+              : imagePath;
+          final svg = await Svg.load(svgPath);
+          _cachedSvgs[imagePath] = svg;
+          _loadedSvg = svg;
+        }
+      } else if (theme.gemImageType == GemImageType.png) {
+        // Загружаем PNG
+        if (_cachedImages.containsKey(imagePath)) {
+          _loadedImage = _cachedImages[imagePath];
+        } else {
+          final data = await rootBundle.load(imagePath);
+          final bytes = data.buffer.asUint8List();
+          final codec = await ui.instantiateImageCodec(bytes);
+          final frame = await codec.getNextFrame();
+          _cachedImages[imagePath] = frame.image;
+          _loadedImage = frame.image;
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки - будет рисоваться цветной квадрат
+      print('Не удалось загрузить изображение $imagePath: $e');
+    }
+
+    _isLoading = false;
+  }
+
+  @override
   void render(Canvas canvas) {
     super.render(canvas);
 
     final center = size / 2;
-    final gemPadding = gemSize * 0.03; // Уменьшенный отступ для плотности
+    final gemPadding = gemSize * 0.03;
     final rect = Rect.fromCenter(
       center: Offset(center.x, center.y),
       width: gemSize - gemPadding * 2,
       height: gemSize - gemPadding * 2,
+    );
+
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(gemSize * 0.15),
     );
 
     // Рисуем тень
@@ -55,23 +126,45 @@ class GemComponent extends PositionComponent {
       shadowPaint,
     );
 
-    // Основной квадрат с градиентом
-    final gemColor = theme.getGemColor(gemType);
-    final gradient = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [gemColor, gemColor.withOpacity(0.7)],
-    );
+    // Рисуем изображение или цветной квадрат
+    if (theme.gemImageType == GemImageType.svg && _loadedSvg != null) {
+      // Рисуем SVG
+      canvas.save();
+      canvas.translate(rect.left, rect.top);
+      canvas.clipRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, rect.width, rect.height),
+          Radius.circular(gemSize * 0.15),
+        ),
+      );
+      _loadedSvg!.render(canvas, Vector2(rect.width, rect.height));
+      canvas.restore();
+    } else if (theme.gemImageType == GemImageType.png && _loadedImage != null) {
+      // Рисуем PNG
+      canvas.save();
+      canvas.clipRRect(rrect);
+      paintImage(
+        canvas: canvas,
+        rect: rect,
+        image: _loadedImage!,
+        fit: BoxFit.cover,
+      );
+      canvas.restore();
+    } else {
+      // Рисуем цветной квадрат (дефолт или если изображение не загрузилось)
+      final gemColor = theme.getGemColor(gemType);
+      final gradient = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [gemColor, gemColor.withOpacity(0.7)],
+      );
 
-    final paint = Paint()
-      ..shader = gradient.createShader(rect)
-      ..style = PaintingStyle.fill;
+      final paint = Paint()
+        ..shader = gradient.createShader(rect)
+        ..style = PaintingStyle.fill;
 
-    final rrect = RRect.fromRectAndRadius(
-      rect,
-      Radius.circular(gemSize * 0.15),
-    );
-    canvas.drawRRect(rrect, paint);
+      canvas.drawRRect(rrect, paint);
+    }
 
     // Затемнение при выделении
     if (isSelected) {
