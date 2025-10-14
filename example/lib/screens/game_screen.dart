@@ -15,72 +15,17 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  late Match3Game game;
-
   // Игровая статистика для UI
   int score = 0;
   int moves = 0;
   int combo = 0;
   String message = '';
-
-  // Игровой таймер (60 секунд)
   double timeLeft = 60.0;
-  Timer? gameTimer;
   bool isGameOver = false;
 
   @override
   void initState() {
     super.initState();
-    game = Match3Game(rows: widget.rows, columns: widget.columns);
-
-    // Подписываемся на события игры
-    game.onScoreChanged = (newScore) {
-      setState(() {
-        score = newScore;
-      });
-      // Проверка на победу
-      if (score >= 1000 && !isGameOver) {
-        _endGame(true);
-      }
-    };
-
-    game.onMovesChanged = (newMoves) {
-      setState(() {
-        moves = newMoves;
-      });
-    };
-
-    game.onComboChanged = (newCombo) {
-      setState(() {
-        combo = newCombo;
-      });
-    };
-
-    game.onMessage = (msg) {
-      setState(() {
-        message = msg;
-      });
-    };
-
-    // Запускаем игровой таймер
-    _startGameTimer();
-  }
-
-  void _startGameTimer() {
-    gameTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!mounted || isGameOver) {
-        timer.cancel();
-        return;
-      }
-
-      setState(() {
-        timeLeft -= 0.1;
-        if (timeLeft <= 0) {
-          timeLeft = 0;
-          _endGame(false);
-        }
-      });
-    });
   }
 
   void _endGame(bool isVictory) {
@@ -89,8 +34,6 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       isGameOver = true;
     });
-
-    gameTimer?.cancel();
 
     // Показываем экран результатов
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -112,96 +55,115 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   @override
-  void dispose() {
-    gameTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            // Игровое поле
-            Match3GameWidget(game: game),
-
-            // UI Overlay сверху
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+            // UI панель сверху
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Кнопка домой и прогресс бар
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: _buildScoreProgressBar()),
+                      IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.home,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Прогресс бар очков
-                    _buildScoreProgressBar(),
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                    // Таймер
-                    _buildTimer(),
-                    const SizedBox(height: 12),
+                  // Таймер
+                  _buildTimer(),
+                  const SizedBox(height: 12),
 
-                    // Ходы и комбо
-                    _buildStats(),
-                  ],
-                ),
+                  // Ходы и комбо
+                  _buildStats(),
+                ],
               ),
             ),
 
-            // Кнопка возврата в меню
-            Positioned(
-              top: 20,
-              right: 20,
-              child: IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.home, color: Colors.white, size: 28),
-                ),
-                onPressed: () {
-                  gameTimer?.cancel();
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-
-            // Сообщения
+            // Сообщение (если есть)
             if (message.isNotEmpty)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+              Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C3E50),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
+
+            // Игровое поле
+            Expanded(
+              child: Center(
+                child: Match3GameWidget(
+                  rows: widget.rows,
+                  columns: widget.columns,
+                  theme: const Match3Theme(backgroundColor: Colors.white),
+                  onTimeChanged: (newTimeLeft) {
+                    setState(() => timeLeft = newTimeLeft);
+                  },
+                  onScoreChanged: (newScore) {
+                    setState(() => score = newScore);
+                  },
+                  onMovesChanged: (newMoves) {
+                    setState(() => moves = newMoves);
+                  },
+                  onComboChanged: (newCombo) {
+                    setState(() => combo = newCombo);
+                  },
+                  onMessage: (msg) {
+                    setState(() => message = msg);
+                  },
+                  // Обработка окончания игры
+                  onGameEnd: (finalScore, finalMoves, result) {
+                    if (!isGameOver) {
+                      _endGame(result == 'victory');
+                    }
+                  },
+                ),
+              ),
+            ),
           ],
         ),
       ),

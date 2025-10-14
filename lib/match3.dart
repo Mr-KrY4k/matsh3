@@ -1,6 +1,9 @@
 // Экспорт виджетов
 export 'src/widgets/match3_game_widget.dart';
 
+// Экспорт темы
+export 'src/theme/match3_theme.dart';
+
 // Экспорт игровой логики
 export 'src/game/match3_game.dart';
 export 'src/game/board_manager.dart';

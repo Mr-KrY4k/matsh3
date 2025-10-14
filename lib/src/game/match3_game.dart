@@ -8,6 +8,7 @@ import '../models/board_position.dart';
 import '../models/gem_type.dart';
 import '../models/match.dart' as gem_match;
 import '../models/special_gem_type.dart';
+import '../theme/match3_theme.dart';
 import 'board_manager.dart';
 import 'special_gem_activator.dart';
 
@@ -18,6 +19,10 @@ import 'special_gem_activator.dart';
 class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   final int rows;
   final int columns;
+  final Match3Theme theme;
+  final double? timeLimit; // Лимит времени (null = без лимита)
+  final int? targetScore; // Целевой счет (null = без цели)
+
   static const double screenPadding = 20.0; // Отступы от краев экрана
   static const double swipeThreshold =
       20.0; // Минимальное расстояние для свайпа
@@ -39,11 +44,16 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   int combo = 0; // Счетчик комбо
   double comboResetTimer = 0; // Таймер для автоматического сброса комбо
 
+  // Игровой таймер
+  double? timeLeft; // null если нет лимита времени
+
   // Callbacks для событий игры
+  Function(double timeLeft)? onTimeChanged;
   Function(int score)? onScoreChanged;
   Function(int moves)? onMovesChanged;
   Function(int combo)? onComboChanged;
   Function(String message)? onMessage;
+  Function(int score, int moves, String result)? onGameEnd;
 
   // Для обработки свайпов
   Vector2? dragStartPosition;
@@ -53,10 +63,45 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   /// Конструктор игры
   /// [rows] - количество строк
   /// [columns] - количество столбцов
-  Match3Game({this.rows = 8, this.columns = 8});
+  /// [theme] - тема игры
+  /// [timeLimit] - лимит времени в секундах (null = без лимита)
+  /// [targetScore] - целевой счет для победы (null = без цели)
+  Match3Game({
+    this.rows = 8,
+    this.columns = 8,
+    this.theme = const Match3Theme(),
+    this.timeLimit,
+    this.targetScore,
+  }) {
+    // Инициализируем таймер если задан лимит
+    if (timeLimit != null) {
+      timeLeft = timeLimit;
+    }
+  }
 
   @override
-  Color backgroundColor() => const Color(0xFF2C3E50);
+  Color backgroundColor() => theme.backgroundColor;
+
+  @override
+  void render(Canvas canvas) {
+    // Сохраняем состояние канваса
+    canvas.save();
+
+    // Обрезаем область рисования - скрываем всё что за пределами поля
+    final boardWidth = columns * gemSize;
+    final boardHeight = rows * gemSize;
+    final borderRect = Rect.fromLTWH(offsetX, offsetY, boardWidth, boardHeight);
+
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(borderRect, const Radius.circular(8)),
+    );
+
+    // Рисуем всё внутри (камни отрисуются через super.render)
+    super.render(canvas);
+
+    // Восстанавливаем канвас
+    canvas.restore();
+  }
 
   @override
   Future<void> onLoad() async {
@@ -188,6 +233,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       boardPosition: boardPos,
       gemSize: gemSize,
       position: Vector2(x, y),
+      theme: theme,
     );
   }
 
@@ -423,12 +469,9 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     comboResetTimer = 0;
 
     while (true) {
-      // Находим все совпадения (включая ряды со специальными камнями)
+      // Находим все совпадения
       final matches = boardManager.findMatches();
       if (matches.isEmpty) break;
-
-      // Проверяем, есть ли специальные камни в этих совпадениях и активируем их
-      await checkAndActivateSpecialGems(matches);
 
       // Обновляем счет для каждой группы совпадений
       for (final match in matches) {
@@ -479,71 +522,64 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     onMessage?.call('');
   }
 
-  /// Проверить и активировать специальные камни в совпадениях
-  Future<bool> checkAndActivateSpecialGems(
-    List<gem_match.GemMatch> matches,
-  ) async {
-    final positionsToExplode = <BoardPosition>{};
+  /// Собрать все позиции для взрыва с учетом цепных реакций
+  Set<BoardPosition> _collectExplosionPositions(
+    BoardPosition pos,
+    SpecialGemType specialType,
+    Set<BoardPosition> alreadyProcessed,
+  ) {
+    final positions = <BoardPosition>{};
 
-    // Ищем специальные камни в переданных совпадениях
-    for (final match in matches) {
-      for (final pos in match.positions) {
-        final gem = gemComponents[pos.row][pos.col];
-        if (gem != null && gem.specialType != SpecialGemType.none) {
-          // Добавляем позиции для взрыва
-          final explosionPositions = SpecialGemActivator.getExplosionPositions(
-            pos,
-            gem.specialType,
-            rows,
-            columns,
-          );
-          positionsToExplode.addAll(explosionPositions);
+    // Если уже обработали эту позицию - пропускаем
+    if (alreadyProcessed.contains(pos)) {
+      return positions;
+    }
 
-          // Увеличиваем комбо за активацию специального камня
-          combo++;
-          onComboChanged?.call(combo);
-        }
+    alreadyProcessed.add(pos);
+
+    // Получаем позиции взрыва для текущего специального камня
+    final explosionPositions = SpecialGemActivator.getExplosionPositions(
+      pos,
+      specialType,
+      rows,
+      columns,
+    );
+
+    positions.addAll(explosionPositions);
+
+    // Проверяем каждую позицию на наличие других специальных камней
+    for (final explosionPos in explosionPositions) {
+      final gem = gemComponents[explosionPos.row][explosionPos.col];
+      if (gem != null &&
+          gem.specialType != SpecialGemType.none &&
+          !alreadyProcessed.contains(explosionPos)) {
+        // Рекурсивно собираем позиции от этого специального камня
+        final chainPositions = _collectExplosionPositions(
+          explosionPos,
+          gem.specialType,
+          alreadyProcessed,
+        );
+        positions.addAll(chainPositions);
       }
     }
 
-    // Активируем специальные камни
-    if (positionsToExplode.isNotEmpty) {
-      await explodePositions(positionsToExplode.toList());
-      return true;
-    }
-    return false;
-  }
-
-  /// Взорвать камни на указанных позициях
-  Future<void> explodePositions(List<BoardPosition> positions) async {
-    // Собираем все компоненты для удаления
-    final gemsToRemove = <GemComponent>[];
-    final futures = <Future>[];
-
-    for (final pos in positions) {
-      final gem = gemComponents[pos.row][pos.col];
-      if (gem != null) {
-        gemsToRemove.add(gem);
-        futures.add(gem.disappear());
-        gemComponents[pos.row][pos.col] = null;
-        boardManager.setGem(pos, null);
-      }
-    }
-
-    // Ждем завершения анимаций
-    await Future.wait(futures);
-
-    // Удаляем компоненты после анимации
-    for (final gem in gemsToRemove) {
-      remove(gem);
-    }
-
-    await Future.delayed(const Duration(milliseconds: 100));
+    return positions;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+
+    // Обновляем игровой таймер (если есть лимит)
+    if (timeLeft != null && !isProcessing) {
+      timeLeft = timeLeft! - dt;
+      onTimeChanged?.call(timeLeft!);
+
+      if (timeLeft! <= 0) {
+        timeLeft = 0;
+        endGame('timeout'); // Время вышло
+      }
+    }
 
     // Обновляем таймер сброса комбо
     if (comboResetTimer > 0) {
@@ -556,66 +592,120 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     }
   }
 
+  /// Завершить игру с результатом
+  ///
+  /// Параметры:
+  /// - [result] - результат игры (например: "victory", "defeat", "timeout", и т.д.)
+  ///
+  /// Вызовет callback `onGameEnd` с текущими очками, ходами и результатом
+  void endGame(String result) {
+    isProcessing = true; // Блокируем дальнейшие действия
+    onGameEnd?.call(score, moves, result);
+  }
+
   /// Удалить совпавшие камни и создать специальные при необходимости
   Future<void> removeMatches(List<gem_match.GemMatch> matches) async {
-    final futures = <Future>[];
-    final gemsToRemove = <GemComponent>[];
+    final allPositionsToRemove = <BoardPosition>{};
     final specialGemsToTransform = <MapEntry<GemComponent, SpecialGemType>>[];
+    final alreadyProcessed = <BoardPosition>{};
 
     for (final match in matches) {
       // Проверяем, есть ли уже специальный камень в этом совпадении
-      bool hasSpecialGem = false;
+      BoardPosition? existingSpecialPos;
+      SpecialGemType? existingSpecialType;
+
       for (final pos in match.positions) {
         final gem = gemComponents[pos.row][pos.col];
         if (gem != null && gem.specialType != SpecialGemType.none) {
-          hasSpecialGem = true;
+          existingSpecialPos = pos;
+          existingSpecialType = gem.specialType;
           break;
         }
       }
 
-      BoardPosition? specialGemPos;
-      SpecialGemType? specialType;
+      // Если есть специальный камень в совпадении - собираем ВСЕ позиции с цепной реакцией
+      if (existingSpecialPos != null && existingSpecialType != null) {
+        final beforeCount = alreadyProcessed.length;
 
-      // Если в совпадении нет специального камня, создаем новый при 4+
-      if (!hasSpecialGem) {
-        if (match.length >= 5) {
-          // 5+ в ряд -> бомба (взрывает область 3x3)
-          specialGemPos = match.specialGemPosition;
-          specialType = SpecialGemType.bomb;
-        } else if (match.length == 4) {
-          // 4 в ряд -> линейный камень
-          specialGemPos = match.specialGemPosition;
-          specialType = match.direction == gem_match.MatchDirection.horizontal
-              ? SpecialGemType.horizontal
-              : SpecialGemType.vertical;
-        }
+        // Рекурсивно собираем все позиции (включая цепные специальные камни)
+        final explosionPositions = _collectExplosionPositions(
+          existingSpecialPos,
+          existingSpecialType,
+          alreadyProcessed,
+        );
+        allPositionsToRemove.addAll(explosionPositions);
+
+        // Увеличиваем комбо за каждый активированный специальный камень
+        final activatedCount = alreadyProcessed.length - beforeCount;
+        combo += activatedCount;
+        onComboChanged?.call(combo);
       }
 
-      // Собираем камни для удаления
-      for (final BoardPosition pos in match.positions) {
-        final gem = gemComponents[pos.row][pos.col];
-        if (gem != null) {
-          // Если это позиция для создания специального камня, преобразуем его
-          if (specialGemPos != null && pos == specialGemPos) {
-            futures.add(gem.disappear());
-            specialGemsToTransform.add(MapEntry(gem, specialType!));
-          } else {
-            futures.add(gem.disappear());
-            gemsToRemove.add(gem);
-            gemComponents[pos.row][pos.col] = null;
+      // Добавляем позиции из обычного совпадения
+      for (final pos in match.positions) {
+        allPositionsToRemove.add(pos);
+      }
+    }
+
+    // ОДНОВРЕМЕННО удаляем ВСЕ камни (обычные + все цепные специальные)
+    final futures = <Future>[];
+    final gemsToRemove = <GemComponent>[];
+
+    for (final pos in allPositionsToRemove) {
+      final gem = gemComponents[pos.row][pos.col];
+      if (gem != null) {
+        // Проверяем, нужно ли создать специальный камень на этой позиции
+        bool shouldTransform = false;
+        SpecialGemType? transformType;
+
+        // Проверяем все совпадения без специальных камней
+        for (final match in matches) {
+          // Пропускаем совпадения где уже есть специальный камень
+          bool hasSpecial = false;
+          for (final p in match.positions) {
+            final g = gemComponents[p.row][p.col];
+            if (g != null && g.specialType != SpecialGemType.none) {
+              hasSpecial = true;
+              break;
+            }
+          }
+
+          if (!hasSpecial &&
+              match.positions.contains(pos) &&
+              match.length >= 4) {
+            final specialGemPos = match.specialGemPosition;
+            if (specialGemPos == pos) {
+              shouldTransform = true;
+              if (match.length >= 5) {
+                transformType = SpecialGemType.bomb;
+              } else {
+                transformType =
+                    match.direction == gem_match.MatchDirection.horizontal
+                    ? SpecialGemType.horizontal
+                    : SpecialGemType.vertical;
+              }
+              break;
+            }
           }
         }
-      }
 
-      // Обновляем доску - удаляем все кроме специального
-      for (final pos in match.positions) {
-        if (specialGemPos == null || pos != specialGemPos) {
+        futures.add(gem.disappear());
+
+        if (shouldTransform && transformType != null) {
+          specialGemsToTransform.add(MapEntry(gem, transformType));
+        } else {
+          gemsToRemove.add(gem);
+          gemComponents[pos.row][pos.col] = null;
+        }
+
+        // Обновляем доску
+        if (!shouldTransform) {
           boardManager.setGem(pos, null);
         }
       }
     }
 
-    // Ждем завершения всех анимаций исчезновения параллельно
+    // Ждем завершения ВСЕХ анимаций одновременно
     await Future.wait(futures);
 
     // Удаляем компоненты
@@ -695,6 +785,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
               offsetX + pos.col * gemSize + gemSize / 2,
               startY,
             ),
+            theme: theme,
           );
 
           gemComponents[pos.row][pos.col] = gemComponent;

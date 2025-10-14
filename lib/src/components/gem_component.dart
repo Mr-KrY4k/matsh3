@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import '../models/gem_type.dart';
 import '../models/board_position.dart';
 import '../models/special_gem_type.dart';
+import '../theme/match3_theme.dart';
 
 /// Компонент драгоценного камня
 class GemComponent extends PositionComponent {
   final GemType gemType;
   final BoardPosition boardPosition;
   final double gemSize;
+  final Match3Theme theme;
   bool isSelected = false;
   bool isMatched = false;
   SpecialGemType specialType;
@@ -23,6 +25,7 @@ class GemComponent extends PositionComponent {
     required this.boardPosition,
     required this.gemSize,
     required Vector2 position,
+    required this.theme,
     this.specialType = SpecialGemType.none,
   }) : super(
          position: position,
@@ -53,10 +56,11 @@ class GemComponent extends PositionComponent {
     );
 
     // Основной квадрат с градиентом
+    final gemColor = theme.getGemColor(gemType);
     final gradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [gemType.color, gemType.color.withOpacity(0.7)],
+      colors: [gemColor, gemColor.withOpacity(0.7)],
     );
 
     final paint = Paint()
@@ -69,44 +73,12 @@ class GemComponent extends PositionComponent {
     );
     canvas.drawRRect(rrect, paint);
 
-    // Внутренняя рамка для объема
-    final innerBorderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final innerRect = rect.deflate(3);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(innerRect, Radius.circular(gemSize * 0.12)),
-      innerBorderPaint,
-    );
-
-    // Блик в верхнем левом углу
-    final highlightRect = Rect.fromLTWH(
-      rect.left + rect.width * 0.15,
-      rect.top + rect.height * 0.15,
-      rect.width * 0.3,
-      rect.height * 0.3,
-    );
-    final highlightPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [Colors.white.withOpacity(0.5), Colors.white.withOpacity(0.0)],
-      ).createShader(highlightRect);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(highlightRect, Radius.circular(gemSize * 0.08)),
-      highlightPaint,
-    );
-
-    // Граница при выделении
+    // Затемнение при выделении
     if (isSelected) {
-      final borderPaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4;
-      final selectedRect = rect.inflate(4);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(selectedRect, Radius.circular(gemSize * 0.18)),
-        borderPaint,
-      );
+      final darkenPaint = Paint()
+        ..color = Colors.black.withOpacity(0.4)
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(rrect, darkenPaint);
     }
 
     // Рисуем иконку специального камня
