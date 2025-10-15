@@ -15,8 +15,9 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   // Игровая статистика для UI
 
-  final int targetScore = 2000;
+  final int targetScore = 1000;
   final double timeLimit = 60;
+  bool startTimerOnFirstMove = true; // Флаг для управления началом таймера
 
   late final ValueNotifier<int> scoreNotifier = ValueNotifier(0);
   late final ValueNotifier<int> movesNotifier = ValueNotifier(0);
@@ -138,7 +139,14 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: Header(),
+      appBar: Header(
+        onTimerModeChanged: (value) {
+          setState(() {
+            startTimerOnFirstMove = value;
+          });
+        },
+        startTimerOnFirstMove: startTimerOnFirstMove,
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,6 +203,7 @@ class _GameScreenState extends State<GameScreen> {
                   columns: 5,
                   timeLimit: timeLimit,
                   targetScore: targetScore,
+                  startTimerOnFirstMove: startTimerOnFirstMove,
                   theme: Match3Theme(
                     backgroundColor: Colors.white,
                     gemImages: {
@@ -361,7 +370,14 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 final class Header extends StatelessWidget implements PreferredSizeWidget {
-  const Header({super.key});
+  final Function(bool)? onTimerModeChanged;
+  final bool startTimerOnFirstMove;
+
+  const Header({
+    super.key,
+    this.onTimerModeChanged,
+    this.startTimerOnFirstMove = false,
+  });
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
@@ -385,6 +401,62 @@ final class Header extends StatelessWidget implements PreferredSizeWidget {
           right: 20,
           top: 10 + MediaQuery.of(context).padding.top,
           bottom: 10,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Заголовок
+            Text(
+              'Match-3',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            // Переключатель режима таймера
+            if (onTimerModeChanged != null)
+              Row(
+                children: [
+                  Text(
+                    'Таймер:',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF2C3E50)),
+                  ),
+                  SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => onTimerModeChanged!(!startTimerOnFirstMove),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: startTimerOnFirstMove
+                            ? Color(0xFF3AB374)
+                            : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: startTimerOnFirstMove
+                              ? Color(0xFF2C3E50)
+                              : Colors.grey.shade400,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        startTimerOnFirstMove ? 'После хода' : 'Сразу',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: startTimerOnFirstMove
+                              ? Colors.white
+                              : Color(0xFF2C3E50),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );

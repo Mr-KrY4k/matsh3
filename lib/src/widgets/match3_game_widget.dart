@@ -31,6 +31,9 @@ class Match3GameWidget extends StatefulWidget {
   /// Целевой счет для победы (null = нет цели)
   final int? targetScore;
 
+  /// Запускать таймер после первого хода (true) или сразу (false)
+  final bool startTimerOnFirstMove;
+
   /// Callback при изменении времени (если задан лимит)
   final Function(double timeLeft)? onTimeChanged;
 
@@ -64,6 +67,7 @@ class Match3GameWidget extends StatefulWidget {
     this.theme = const Match3Theme(),
     this.timeLimit,
     this.targetScore,
+    this.startTimerOnFirstMove = false,
     this.onTimeChanged,
     this.onScoreChanged,
     this.onMovesChanged,
@@ -94,6 +98,7 @@ class _Match3GameWidgetState extends State<Match3GameWidget> {
       theme: widget.theme,
       timeLimit: widget.timeLimit,
       targetScore: widget.targetScore,
+      startTimerOnFirstMove: widget.startTimerOnFirstMove,
     );
 
     // Настраиваем callbacks с отложенным вызовом

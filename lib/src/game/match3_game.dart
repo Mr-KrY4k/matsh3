@@ -22,6 +22,8 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   final Match3Theme theme;
   final double? timeLimit; // Лимит времени (null = без лимита)
   final int? targetScore; // Целевой счет (null = без цели)
+  final bool
+  startTimerOnFirstMove; // Запускать таймер после первого хода (true) или сразу (false)
 
   static const double screenPadding = 20.0; // Отступы от краев экрана
   static const double swipeThreshold =
@@ -46,6 +48,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
 
   // Игровой таймер
   double? timeLeft; // null если нет лимита времени
+  bool isTimerStarted = false; // Флаг запуска таймера
 
   // Callbacks для событий игры
   Function(double timeLeft)? onTimeChanged;
@@ -67,16 +70,22 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   /// [theme] - тема игры
   /// [timeLimit] - лимит времени в секундах (null = без лимита)
   /// [targetScore] - целевой счет для победы (null = без цели)
+  /// [startTimerOnFirstMove] - запускать таймер после первого хода (true) или сразу (false)
   Match3Game({
     this.rows = 8,
     this.columns = 8,
     this.theme = const Match3Theme(),
     this.timeLimit,
     this.targetScore,
+    this.startTimerOnFirstMove = false,
   }) {
     // Инициализируем таймер если задан лимит
     if (timeLimit != null) {
       timeLeft = timeLimit;
+      // Если не нужно ждать первого хода, запускаем таймер сразу
+      if (!startTimerOnFirstMove) {
+        isTimerStarted = true;
+      }
     }
   }
 
@@ -432,6 +441,11 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       moves++;
       onMovesChanged?.call(moves);
 
+      // Запускаем таймер после первого успешного хода, если он еще не запущен
+      if (startTimerOnFirstMove && !isTimerStarted && timeLeft != null) {
+        isTimerStarted = true;
+      }
+
       // Обрабатываем совпадения
       await processMatches();
 
@@ -568,8 +582,8 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   void update(double dt) {
     super.update(dt);
 
-    // Обновляем игровой таймер (если есть лимит)
-    if (timeLeft != null && !isProcessing) {
+    // Обновляем игровой таймер (если есть лимит и таймер запущен)
+    if (timeLeft != null && isTimerStarted && !isProcessing) {
       timeLeft = timeLeft! - dt;
       onTimeChanged?.call(timeLeft!);
 
