@@ -206,6 +206,14 @@ class _GameScreenState extends State<GameScreen> {
                   startTimerOnFirstMove: startTimerOnFirstMove,
                   theme: Match3Theme(
                     backgroundColor: Colors.white,
+                    gemColors: {
+                      GemType.red: Color(0xFFDE2F37),
+                      GemType.blue: Color(0xFF0076D3),
+                      GemType.green: Color(0xFF17A961),
+                      GemType.yellow: Color(0xFFEBE200),
+                      GemType.purple: Color(0xFF9111A6),
+                      GemType.orange: Color(0xFFF07720),
+                    },
                     gemImages: {
                       GemType.red: Assets.svg.red.path,
                       GemType.blue: Assets.svg.blue.path,
