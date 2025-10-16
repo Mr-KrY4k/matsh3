@@ -243,6 +243,7 @@ class _GameScreenState extends State<GameScreen> {
                   onMessage: (msg) {
                     messageNotifier.value = msg;
                   },
+                  onFirstMove: _startGame,
                   // Callback при перемешивании
                   onShuffle: () {
                     if (mounted) {
@@ -374,6 +375,10 @@ class _GameScreenState extends State<GameScreen> {
         );
       },
     );
+  }
+
+  void _startGame() {
+    print('startGame');
   }
 }
 

@@ -60,6 +60,9 @@ class Match3GameWidget extends StatefulWidget {
   /// Передает ссылку на игру для возможности управления (например, вызова endGame)
   final Function(Match3Game game)? onGameReady;
 
+  /// Callback при первом взаимодействии с игрой (первом успешном ходе)
+  final Function()? onFirstMove;
+
   const Match3GameWidget({
     super.key,
     this.rows = 8,
@@ -76,6 +79,7 @@ class Match3GameWidget extends StatefulWidget {
     this.onShuffle,
     this.onGameEnd,
     this.onGameReady,
+    this.onFirstMove,
   });
 
   @override
@@ -134,6 +138,10 @@ class _Match3GameWidgetState extends State<Match3GameWidget> {
 
     game.onGameEnd = (score, moves, result) {
       Future.microtask(() => widget.onGameEnd?.call(score, moves, result));
+    };
+
+    game.onFirstMove = () {
+      Future.microtask(() => widget.onFirstMove?.call());
     };
 
     // Уведомляем что игра готова

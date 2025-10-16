@@ -58,6 +58,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   Function(String message)? onMessage;
   Function()? onShuffle;
   Function(int score, int moves, String result)? onGameEnd;
+  Function()? onFirstMove; // Вызывается при первом взаимодействии с игрой
 
   // Для обработки свайпов
   Vector2? dragStartPosition;
@@ -440,6 +441,11 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
       // Есть совпадения - засчитываем ход
       moves++;
       onMovesChanged?.call(moves);
+
+      // Вызываем callback при первом взаимодействии
+      if (moves == 1) {
+        onFirstMove?.call();
+      }
 
       // Запускаем таймер после первого успешного хода, если он еще не запущен
       if (startTimerOnFirstMove && !isTimerStarted && timeLeft != null) {
