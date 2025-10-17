@@ -388,6 +388,19 @@ class GemComponent extends PositionComponent {
     add(MoveEffect.to(newPosition, EffectController(duration: duration)));
   }
 
+  /// Асинхронная анимация перемещения (ждет завершения)
+  Future<void> moveToAsync(
+    Vector2 newPosition, {
+    double duration = 0.15,
+  }) async {
+    final effect = MoveEffect.to(
+      newPosition,
+      EffectController(duration: duration),
+    );
+    add(effect);
+    await effect.completed;
+  }
+
   /// Анимация исчезновения
   Future<void> disappear() async {
     isMatched = true;

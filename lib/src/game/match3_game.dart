@@ -477,11 +477,11 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     final pos1Screen = gem1.position.clone();
     final pos2Screen = gem2.position.clone();
 
-    gem1.moveTo(pos2Screen);
-    gem2.moveTo(pos1Screen);
-
-    // Ждем завершения анимации
-    await Future.delayed(const Duration(milliseconds: 150));
+    // Запускаем анимацию и ждем ее завершения
+    await Future.wait([
+      gem1.moveToAsync(pos2Screen),
+      gem2.moveToAsync(pos1Screen),
+    ]);
   }
 
   /// Обработать совпадения
