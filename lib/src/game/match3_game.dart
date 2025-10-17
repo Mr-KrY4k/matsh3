@@ -5,6 +5,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../components/gem_component.dart';
 import '../models/board_position.dart';
+import '../models/game_result.dart';
 import '../models/gem_type.dart';
 import '../models/match.dart' as gem_match;
 import '../models/special_gem_type.dart';
@@ -58,7 +59,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   Function(int combo)? onComboChanged;
   Function(String message)? onMessage;
   Function()? onShuffle;
-  Function(int score, int moves, String result)? onGameEnd;
+  Function(int score, int moves, GameResult result)? onGameEnd;
   Function()? onFirstMove; // Вызывается при первом взаимодействии с игрой
 
   // Для обработки свайпов
@@ -598,7 +599,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
 
       if (timeLeft! <= 0) {
         timeLeft = 0;
-        endGame('timeout'); // Время вышло
+        endGame(GameResult.timeOut); // Время вышло
       }
     }
 
@@ -616,10 +617,10 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   /// Завершить игру с результатом
   ///
   /// Параметры:
-  /// - [result] - результат игры (например: "victory", "defeat", "timeout", и т.д.)
+  /// - [result] - результат игры (victory, timeOut, manual)
   ///
   /// Вызовет callback `onGameEnd` с текущими очками, ходами и результатом
-  void endGame(String result) {
+  void endGame(GameResult result) {
     isProcessing = true; // Блокируем дальнейшие действия
     onGameEnd?.call(score, moves, result);
   }

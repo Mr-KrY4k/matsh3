@@ -1,6 +1,6 @@
 name: match3
 description: "Гибкий игровой движок Match-3 для Flutter. Поддерживает темы, настраиваемое время и цели, специальные камни, комбо. Бесконечный режим или с ограничениями - вы выбираете!"
-version: 1.0.3
+version: 1.0.4
 homepage: https://github.com/yourusername/match3
 
 environment:

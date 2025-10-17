@@ -18,6 +18,7 @@ export 'src/components/timer_fuse.dart';
 
 // Экспорт моделей данных
 export 'src/models/board_position.dart';
+export 'src/models/game_result.dart';
 export 'src/models/gem_type.dart';
 export 'src/models/match.dart';
 export 'src/models/special_gem_type.dart';

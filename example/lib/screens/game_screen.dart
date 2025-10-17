@@ -264,7 +264,7 @@ class _GameScreenState extends State<GameScreen> {
                   // Обработка окончания игры
                   onGameEnd: (finalScore, finalMoves, result) {
                     if (!isGameOverNotifier.value) {
-                      _endGame(result == 'victory');
+                      _endGame(result == GameResult.victory);
                     }
                   },
                 ),

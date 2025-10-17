@@ -230,7 +230,7 @@ Match3GameWidget(
   // Получение ссылки на игру (для управления)
   onGameReady: (game) {
     gameInstance = game;
-    // Теперь можно вызвать game.endGame('victory') когда нужно
+    // Теперь можно вызвать game.endGame(GameResult.victory) когда нужно
   },
   
   // Изменение очков
@@ -238,7 +238,7 @@ Match3GameWidget(
     print('Score: $score');
     // Завершаем игру при достижении 1000 очков
     if (score >= 1000) {
-      gameInstance?.endGame('victory');
+      gameInstance?.endGame(GameResult.victory);
     }
   },
   
@@ -277,10 +277,40 @@ Match3GameWidget(
   onGameEnd: (score, moves, result) {
     print('Game Over!');
     print('Score: $score, Moves: $moves, Result: $result');
-    // result может быть: 'victory', 'timeout', и т.д.
+    // result - это enum GameResult: victory, timeOut, manual
     // Показать экран результатов
   },
 )
+```
+
+### Результаты игры (GameResult)
+
+Callback `onGameEnd` возвращает enum `GameResult` с тремя возможными значениями:
+
+```dart
+enum GameResult {
+  victory,  // Победа - достигнута целевая цель
+  timeOut,  // Поражение - закончилось время
+  manual,   // Игра завершена вручную через game.endGame()
+}
+```
+
+Пример использования:
+
+```dart
+onGameEnd: (score, moves, result) {
+  switch (result) {
+    case GameResult.victory:
+      print('🎉 Победа! Счет: $score');
+      break;
+    case GameResult.timeOut:
+      print('⏰ Время вышло! Счет: $score');
+      break;
+    case GameResult.manual:
+      print('🛑 Игра остановлена');
+      break;
+  }
+}
 ```
 
 ### Режимы игры
@@ -294,8 +324,8 @@ Match3GameWidget(
   targetScore: 1000,     // Цель: 1000 очков
   onTimeChanged: (time) => print('Time left: $time'),
   onGameEnd: (score, moves, result) {
-    // result = 'victory' если набрали 1000 очков
-    // result = 'timeout' если время вышло
+    // result = GameResult.victory если набрали 1000 очков
+    // result = GameResult.timeOut если время вышло
   },
 )
 
@@ -304,7 +334,7 @@ Match3GameWidget(
   timeLimit: 120.0,      // 2 минуты
   targetScore: null,     // Нет цели
   onGameEnd: (score, moves, result) {
-    // result = 'timeout' 
+    // result = GameResult.timeOut 
     // score - сколько успели набрать
   },
 )
@@ -314,7 +344,7 @@ Match3GameWidget(
   timeLimit: null,       // Без лимита времени
   targetScore: 5000,     // Цель: 5000 очков
   onGameEnd: (score, moves, result) {
-    // result = 'victory'
+    // result = GameResult.victory
     // moves - сколько ходов потребовалось
   },
 )
@@ -324,7 +354,7 @@ Match3GameWidget(
   timeLimit: null,       // Без лимита
   targetScore: null,     // Без цели
   // Игра никогда не закончится сама
-  // Можно завершить вручную через game.endGame('custom_reason')
+  // Можно завершить вручную через game.endGame(GameResult.manual)
 )
 ```
 

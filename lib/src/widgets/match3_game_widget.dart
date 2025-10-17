@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../game/match3_game.dart';
+import '../models/game_result.dart';
 import '../theme/match3_theme.dart';
 
 /// Виджет для отображения Match3 игры
@@ -58,7 +59,7 @@ class Match3GameWidget extends StatefulWidget {
 
   /// Callback при окончании игры
   /// Параметры: score - финальный счет, moves - количество ходов, result - результат
-  final Function(int score, int moves, String result)? onGameEnd;
+  final Function(int score, int moves, GameResult result)? onGameEnd;
 
   /// Callback при инициализации игры
   /// Передает ссылку на игру для возможности управления (например, вызова endGame)
@@ -121,7 +122,7 @@ class _Match3GameWidgetState extends State<Match3GameWidget> {
         widget.onScoreChanged?.call(score);
         // Проверяем достижение целевого счета
         if (widget.targetScore != null && score >= widget.targetScore!) {
-          game.endGame('victory');
+          game.endGame(GameResult.victory);
         }
       });
     };
