@@ -24,6 +24,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   final int? targetScore; // Целевой счет (null = без цели)
   final bool
   startTimerOnFirstMove; // Запускать таймер после первого хода (true) или сразу (false)
+  final int pointsPerGem; // Количество очков за один камень
 
   static const double screenPadding = 20.0; // Отступы от краев экрана
   static const double swipeThreshold =
@@ -72,6 +73,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
   /// [timeLimit] - лимит времени в секундах (null = без лимита)
   /// [targetScore] - целевой счет для победы (null = без цели)
   /// [startTimerOnFirstMove] - запускать таймер после первого хода (true) или сразу (false)
+  /// [pointsPerGem] - количество очков за один камень (по умолчанию 10)
   Match3Game({
     this.rows = 8,
     this.columns = 8,
@@ -79,6 +81,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
     this.timeLimit,
     this.targetScore,
     this.startTimerOnFirstMove = false,
+    this.pointsPerGem = 10,
   }) {
     // Инициализируем таймер если задан лимит
     if (timeLimit != null) {
@@ -502,7 +505,7 @@ class Match3Game extends FlameGame with TapCallbacks, DragCallbacks {
         final comboMultiplier = (combo).clamp(1, 5);
 
         // Добавляем очки за эту группу
-        score += match.length * 10 * comboMultiplier;
+        score += match.length * pointsPerGem * comboMultiplier;
       }
 
       onComboChanged?.call(combo);

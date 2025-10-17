@@ -11,6 +11,7 @@ import '../theme/match3_theme.dart';
 /// Match3GameWidget(
 ///   rows: 8,
 ///   columns: 8,
+///   pointsPerGem: 10, // Очки за один камень
 ///   onScoreChanged: (score) => print('Score: $score'),
 ///   onMovesChanged: (moves) => print('Moves: $moves'),
 /// )
@@ -33,6 +34,9 @@ class Match3GameWidget extends StatefulWidget {
 
   /// Запускать таймер после первого хода (true) или сразу (false)
   final bool startTimerOnFirstMove;
+
+  /// Количество очков за один камень (по умолчанию 10)
+  final int pointsPerGem;
 
   /// Callback при изменении времени (если задан лимит)
   final Function(double timeLeft)? onTimeChanged;
@@ -71,6 +75,7 @@ class Match3GameWidget extends StatefulWidget {
     this.timeLimit,
     this.targetScore,
     this.startTimerOnFirstMove = false,
+    this.pointsPerGem = 10,
     this.onTimeChanged,
     this.onScoreChanged,
     this.onMovesChanged,
@@ -103,6 +108,7 @@ class _Match3GameWidgetState extends State<Match3GameWidget> {
       timeLimit: widget.timeLimit,
       targetScore: widget.targetScore,
       startTimerOnFirstMove: widget.startTimerOnFirstMove,
+      pointsPerGem: widget.pointsPerGem,
     );
 
     // Настраиваем callbacks с отложенным вызовом
